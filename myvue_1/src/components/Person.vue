@@ -2,37 +2,21 @@
 
 <template>
   <div class="person">
-    姓：<input type="text" v-model="firstName" /> <br />
-    名：<input type="text" v-model="lastName" /> <br />
-    全名：<span>{{ fullName }}</span>
-    <button @click="changeFullName">修改全名</button>
+    <h1>情况一：监视ref定义的基本类型数据</h1>
+    <h2>当前求和为：{{ sum }}</h2>
+    <button @click="changeSum">点我sum+1</button>
   </div>
 </template>
 
 <script lang="ts" name="Person234" setup>
-import { ref, computed } from 'vue'
-const firstName = ref('zhang')
-const lastName = ref('san')
-// const fullName = computed(() => {
-//   return firstName.value.slice(0, 1).toUpperCase() + firstName.value.slice(1) + '-' + lastName.value
-// })
-const fullName = computed({
-  get() {
-    return (
-      firstName.value.slice(0, 1).toUpperCase() + firstName.value.slice(1) + '-' + lastName.value
-    )
-  },
-  set(newValue: string) {
-    const names = newValue.split('-')
-    if (names.length === 2) {
-      firstName.value = names[0]
-      lastName.value = names[1]
-    }
-  },
-})
-function changeFullName() {
-  fullName.value = 'LiSi-李四'
+import { ref, watch } from 'vue'
+const sum = ref(0)
+function changeSum() {
+  sum.value += 1
 }
+watch(sum, (newV, oldV) => {
+  console.log('sum变化了', newV, oldV)
+})
 </script>
 
 <style scoped>
