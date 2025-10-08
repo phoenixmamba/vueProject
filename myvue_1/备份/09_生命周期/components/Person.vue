@@ -2,25 +2,33 @@
 
 <template>
   <div class="person">
-    <h2>sum:{{ sum }},放大十倍：{{ bigSum }}</h2>
+    <h2>sum:{{ sum }}</h2>
     <button @click="add">点击+1</button>
-    <hr />
-    <ul>
-      <li v-for="(dog, index) in dogList" :key="index">
-        <img :src="dog" alt="dog" width="200" />
-      </li>
-    </ul>
-    <button @click="anotherDog">再来一只狗</button>
   </div>
 </template>
 
 <script lang="ts" name="Person234" setup>
 // import { defineProps, withDefaults } from 'vue'
-import useDog from '@/hooks/useDog'
-import useSum from '@/hooks/useSum'
+import { ref, onBeforeMount, onMounted, onBeforeUpdate, onUpdated } from 'vue'
 
-const { sum, add, bigSum } = useSum()
-const { dogList, anotherDog } = useDog()
+const sum = ref(0)
+
+function add() {
+  sum.value++
+}
+console.log('Person setup')
+onBeforeMount(() => {
+  console.log('Person onBeforeMount')
+})
+onMounted(() => {
+  console.log('Person onMounted')
+})
+onBeforeUpdate(() => {
+  console.log('Person onBeforeUpdate')
+})
+onUpdated(() => {
+  console.log('Person onUpdated')
+})
 </script>
 
 <style scoped>
@@ -46,8 +54,5 @@ li {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   font-size: 16px;
   color: #333;
-}
-img {
-  height: auto;
 }
 </style>
