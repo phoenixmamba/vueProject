@@ -5,7 +5,7 @@
 <script setup lang="ts"></script>
 
 <style scoped>
-title {
+.title {
   color: #1f2d3d;
   margin-bottom: 25px;
   font-size: 2em;
