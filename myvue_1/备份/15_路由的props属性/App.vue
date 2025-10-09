@@ -2,9 +2,10 @@
   <div class="app">
     <MyHeader />
     <div class="navigate">
+      <RouterLink :to="{ name: 'home' }">首页</RouterLink>
       <RouterLink :to="{ name: 'news' }">新闻</RouterLink>
-      <RouterLink :to="{ name: 'guanyu' }">关于</RouterLink>
-      <RouterLink :to="{ name: 'dog' }">狗狗</RouterLink>
+  <RouterLink :to="{ name: 'guanyu' }">关于</RouterLink>
+  <RouterLink :to="{ name: 'dog' }">狗狗</RouterLink>
     </div>
     <div class="content">
       <RouterView />
