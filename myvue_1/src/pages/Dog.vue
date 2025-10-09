@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
   <div class="dog-page">
     <h1>随机狗狗图片</h1>
