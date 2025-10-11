@@ -5,6 +5,7 @@ import News from '@/pages/News.vue'
 import NewsDetail from '@/pages/NewsDetail.vue'
 import Dog from '@/pages/Dog.vue'
 import Login from '@/pages/Login.vue'
+import NovelDemo from '@/pages/NovelDemo.vue'
 
 //创建路由器
 const router = createRouter({
@@ -56,6 +57,11 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: Login,
+    },
+    {
+      path: '/novel',
+      name: 'novel',
+      component: NovelDemo,
     },
   ],
 })

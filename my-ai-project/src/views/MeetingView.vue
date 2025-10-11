@@ -72,54 +72,66 @@
   </div>
 </template>
 
-<script>
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+<script lang="ts">
+import { ref, reactive, onMounted, defineComponent } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 
-export default {
+interface Meeting {
+  id: string;
+  title: string;
+  content: string;
+  meetingTime: string;
+  location: string;
+  departments: string;
+  leaders: string;
+  createTime: string;
+  updateTime: string;
+}
+
+export default defineComponent({
   name: 'MeetingView',
   setup() {
     // 加载状态
-    const loading = ref(false)
+    const loading = ref(false);
     
     // 会议列表
-    const meetings = ref([])
+    const meetings = ref<Meeting[]>([]);
     
     // 新增会议对话框可见性
-    const createDialogVisible = ref(false)
+    const createDialogVisible = ref(false);
     
     // 编辑会议对话框可见性
-    const editDialogVisible = ref(false)
+    const editDialogVisible = ref(false);
     
     // 创建会议表单
     const createMeetingForm = reactive({
       description: ''
-    })
+    });
     
     // 编辑会议表单
     const editMeetingForm = reactive({
       id: '',
       updateDescription: ''
-    })
+    });
 
     // 打开新增会议对话框
     const openCreateDialog = () => {
-      createMeetingForm.description = ''
-      createDialogVisible.value = true
-    }
+      createMeetingForm.description = '';
+      createDialogVisible.value = true;
+    };
     
     // 打开编辑会议对话框
-    const openEditDialog = (meeting) => {
-      editMeetingForm.id = meeting.id
-      editMeetingForm.updateDescription = ''
-      editDialogVisible.value = true
-    }
+    const openEditDialog = (meeting: Meeting) => {
+      editMeetingForm.id = meeting.id;
+      editMeetingForm.updateDescription = '';
+      editDialogVisible.value = true;
+    };
     
     // 创建会议
     const handleCreateMeeting = async () => {
       if (!createMeetingForm.description) {
-        ElMessage.warning('请输入会议描述')
-        return
+        ElMessage.warning('请输入会议描述');
+        return;
       }
 
       try {
@@ -130,30 +142,30 @@ export default {
             'userId': 'user123' // 默认用户ID
           },
           body: JSON.stringify(createMeetingForm.description)
-        })
+        });
 
         if (response.ok) {
-          await response.json()
-          ElMessage.success('会议创建成功')
-          createDialogVisible.value = false
+          await response.json();
+          ElMessage.success('会议创建成功');
+          createDialogVisible.value = false;
           // 清空表单
-          createMeetingForm.description = ''
+          createMeetingForm.description = '';
           // 刷新会议列表
-          getAllMeetings()
+          getAllMeetings();
         } else {
-          ElMessage.error('创建会议失败')
+          ElMessage.error('创建会议失败');
         }
       } catch (error) {
-        console.error('创建会议错误:', error)
-        ElMessage.error('创建会议发生错误')
+        console.error('创建会议错误:', error);
+        ElMessage.error('创建会议发生错误');
       }
-    }
+    };
 
     // 更新会议
     const handleUpdateMeeting = async () => {
       if (!editMeetingForm.id || !editMeetingForm.updateDescription) {
-        ElMessage.warning('请输入更新描述')
-        return
+        ElMessage.warning('请输入更新描述');
+        return;
       }
 
       try {
@@ -164,38 +176,38 @@ export default {
             'userId': 'user123' // 默认用户ID
           },
           body: JSON.stringify(editMeetingForm.updateDescription)
-        })
+        });
 
         if (response.ok) {
-          await response.json()
-          ElMessage.success('会议更新成功')
-          editDialogVisible.value = false
+          await response.json();
+          ElMessage.success('会议更新成功');
+          editDialogVisible.value = false;
           // 清空表单
-          editMeetingForm.id = ''
-          editMeetingForm.updateDescription = ''
+          editMeetingForm.id = '';
+          editMeetingForm.updateDescription = '';
           // 刷新会议列表
-          getAllMeetings()
+          getAllMeetings();
         } else {
-          ElMessage.error('更新会议失败')
+          ElMessage.error('更新会议失败');
         }
       } catch (error) {
-        console.error('更新会议错误:', error)
-        ElMessage.error('更新会议发生错误')
+        console.error('更新会议错误:', error);
+        ElMessage.error('更新会议发生错误');
       }
-    }
+    };
 
     // 删除会议
-    const handleDeleteMeeting = async (id) => {
+    const handleDeleteMeeting = async (id: string) => {
       // 确认删除
       try {
         await ElMessageBox.confirm('确认删除该会议吗？', '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
-        })
+        });
       } catch {
         // 取消删除
-        return
+        return;
       }
 
       try {
@@ -204,45 +216,45 @@ export default {
           headers: {
             'userId': 'user123' // 默认用户ID
           }
-        })
+        });
 
         if (response.status === 204) {
-          ElMessage.success('会议删除成功')
+          ElMessage.success('会议删除成功');
           // 刷新会议列表
-          getAllMeetings()
+          getAllMeetings();
         } else {
-          ElMessage.error('删除会议失败')
+          ElMessage.error('删除会议失败');
         }
       } catch (error) {
-        console.error('删除会议错误:', error)
-        ElMessage.error('删除会议发生错误')
+        console.error('删除会议错误:', error);
+        ElMessage.error('删除会议发生错误');
       }
-    }
+    };
 
     // 获取所有会议
     const getAllMeetings = async () => {
-      loading.value = true
+      loading.value = true;
       try {
-        const response = await fetch('/ai-meeting/api/meetings')
+        const response = await fetch('/ai-meeting/api/meetings');
         
         if (response.ok) {
-          meetings.value = await response.json()
-          ElMessage.success('获取会议列表成功')
+          meetings.value = await response.json();
+          ElMessage.success('获取会议列表成功');
         } else {
-          ElMessage.error('获取会议列表失败')
+          ElMessage.error('获取会议列表失败');
         }
       } catch (error) {
-        console.error('获取会议列表错误:', error)
-        ElMessage.error('获取会议列表发生错误')
+        console.error('获取会议列表错误:', error);
+        ElMessage.error('获取会议列表发生错误');
       } finally {
-        loading.value = false
+        loading.value = false;
       }
-    }
+    };
     
     // 组件挂载后获取会议列表
     onMounted(() => {
-      getAllMeetings()
-    })
+      getAllMeetings();
+    });
 
     // 暴露给模板使用的属性和方法
     return {
@@ -261,9 +273,9 @@ export default {
       handleUpdateMeeting,
       handleDeleteMeeting,
       getAllMeetings
-    }
+    };
   }
-}
+});
 </script>
 
 <style scoped>

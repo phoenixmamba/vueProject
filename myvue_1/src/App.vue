@@ -5,6 +5,7 @@
       <RouterLink :to="{ name: 'news' }">新闻</RouterLink>
       <RouterLink :to="{ name: 'guanyu' }">关于</RouterLink>
       <RouterLink :to="{ name: 'dog' }">狗狗</RouterLink>
+      <RouterLink :to="{ name: 'novel' }">狗狗</RouterLink>
     </div>
     <div class="content">
       <RouterView />
