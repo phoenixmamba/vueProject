@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import MeetingView from '../views/MeetingView.vue';
 import NovelView from '@/views/NovelView.vue';
+import AppChatPage from '@/views/AppChatPage.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -18,6 +19,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/novel',
     name: 'novel',
     component: NovelView
+  },
+  {
+    path: '/app/create',
+    name: 'appCreate',
+    component: AppChatPage
   }
 ];
 

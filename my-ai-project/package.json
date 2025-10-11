@@ -8,8 +8,12 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
+    "@types/markdown-it": "^14.1.2",
+    "axios": "^1.12.2",
     "core-js": "^3.8.3",
     "element-plus": "^2.11.4",
+    "markdown-it": "^14.1.0",
     "marked": "^16.4.0",
     "vue": "^3.2.13",
     "vue-router": "^4.5.1"
@@ -17,6 +21,8 @@
   "devDependencies": {
     "@babel/core": "^7.12.16",
     "@babel/eslint-parser": "^7.12.16",
+    "@types/axios": "^0.9.36",
+    "@types/node": "^24.7.1",
     "@typescript-eslint/parser": "*",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-eslint": "~5.0.0",
@@ -36,7 +42,18 @@
       "eslint:recommended"
     ],
     "parserOptions": {
-      "parser": "@typescript-eslint/parser"
+      "parser": "@typescript-eslint/parser",
+      "ecmaVersion": 2020,
+      "sourceType": "module"
+    },
+    "plugins": [
+      "vue"
+    ],
+    "globals": {
+      "defineProps": "readonly",
+      "defineEmits": "readonly",
+      "defineExpose": "readonly",
+      "withDefaults": "readonly"
     },
     "overrides": [
       {
@@ -46,7 +63,8 @@
           "*.vue"
         ],
         "rules": {
-          "no-unused-vars": "off"
+          "no-unused-vars": "off",
+          "vue/valid-define-props": "off"
         }
       }
     ]

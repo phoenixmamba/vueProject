@@ -1,17 +1,15 @@
 <template>
   <div class="common-layout">
     <el-container>
-      <el-aside width="200px">
+      <el-header class="header">
         <div class="logo">
           <h2>AI 工具箱</h2>
         </div>
         <el-menu
           :default-active="activeIndex"
-          class="menu"
+          class="nav-menu"
+          mode="horizontal"
           @select="handleSelect"
-          background-color="#2c3e50"
-          text-color="#fff"
-          active-text-color="#42b983"
         >
           <el-menu-item index="/">
             <el-icon><House /></el-icon>
@@ -25,8 +23,12 @@
             <el-icon><Edit /></el-icon>
             <span>小说生成</span>
           </el-menu-item>
+          <el-menu-item index="/app/create">
+            <el-icon><EditPen /></el-icon>
+            <span>应用创建</span>
+          </el-menu-item>
         </el-menu>
-      </el-aside>
+      </el-header>
       
       <el-main>
         <router-view />
@@ -38,14 +40,15 @@
 <script lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { House, VideoCamera, Edit } from '@element-plus/icons-vue';
+import { House, VideoCamera, Edit, EditPen } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'MainLayout',
   components: {
     House,
     VideoCamera,
-    Edit
+    Edit,
+    EditPen
   },
   setup() {
     const router = useRouter();
@@ -75,19 +78,25 @@ export default defineComponent({
   height: 100vh;
 }
 
-.el-aside {
+.el-container {
+  flex-direction: column;
+}
+
+.header {
   background-color: #2c3e50;
   color: #fff;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
 }
 
 .logo {
   height: 60px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-bottom: 1px solid #4a5d75;
+  margin-right: 30px;
 }
 
 .logo h2 {
@@ -95,23 +104,59 @@ export default defineComponent({
   color: #fff;
 }
 
-.menu {
-  height: calc(100% - 60px);
-  border-right: none;
+.nav-menu {
+  background-color: transparent;
+  border: none;
+  flex: 1;
+  height: 60px;
+}
+
+.nav-menu :deep(.el-menu-item) {
+  color: #fff;
+  height: 60px;
+  line-height: 60px;
+  border: none;
+  font-size: 16px;
+}
+
+.nav-menu :deep(.el-menu-item:hover) {
+  background-color: #34495e !important;
+  color: #42b983 !important;
+}
+
+.nav-menu :deep(.el-menu-item.is-active) {
+  color: #42b983 !important;
+  border-bottom: 3px solid #42b983;
 }
 
 .el-main {
   padding: 20px;
   background-color: #f8f9fa;
-  min-height: calc(100vh - 40px);
+  min-height: calc(100vh - 80px);
+  flex: 1;
 }
 
-.el-menu-item:hover {
-  background-color: #34495e !important;
-}
-
-.el-menu-item.is-active {
-  background-color: #34495e !important;
-  border-right: 3px solid #42b983;
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    height: auto;
+    padding: 10px;
+  }
+  
+  .logo {
+    margin-right: 0;
+    margin-bottom: 10px;
+    justify-content: center;
+  }
+  
+  .nav-menu {
+    height: auto;
+  }
+  
+  .nav-menu :deep(.el-menu-item) {
+    height: 45px;
+    line-height: 45px;
+    font-size: 14px;
+  }
 }
 </style>
