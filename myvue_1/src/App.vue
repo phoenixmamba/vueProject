@@ -7,6 +7,7 @@
       <RouterLink :to="{ name: 'guanyu' }">关于</RouterLink>
       <RouterLink :to="{ name: 'dog' }">狗狗</RouterLink>
       <RouterLink :to="{ name: 'novel' }">小说</RouterLink>
+      <RouterLink :to="{ name: 'piniaTest' }">Pinia练习</RouterLink>
       <!-- 修正重复的"狗狗"文本 -->
     </nav>
     <main class="content">

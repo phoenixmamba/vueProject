@@ -6,6 +6,7 @@ import NewsDetail from '@/pages/NewsDetail.vue'
 import Dog from '@/pages/Dog.vue'
 import Login from '@/pages/Login.vue'
 import NovelDemo from '@/pages/NovelDemo.vue'
+import PiniaTest from '@/pages/PiniaTest.vue'
 
 //创建路由器
 const router = createRouter({
@@ -62,6 +63,11 @@ const router = createRouter({
       path: '/novel',
       name: 'novel',
       component: NovelDemo,
+    },
+    {
+      path: '/piniaTest',
+      name: 'piniaTest',
+      component: PiniaTest,
     },
   ],
 })
