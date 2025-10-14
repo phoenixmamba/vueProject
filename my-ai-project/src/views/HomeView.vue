@@ -1,7 +1,7 @@
 <template>
   <div class="home">
     <div class="welcome-card">
-      <h1>欢迎来到 AI 工具箱</h1>
+      <h1>欢迎来到 AI 练习</h1>
       <p>探索人工智能的无限可能</p>
       <div class="features">
         <div class="feature-item">

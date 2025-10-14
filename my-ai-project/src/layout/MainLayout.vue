@@ -3,7 +3,7 @@
     <el-container>
       <el-header class="header">
         <div class="logo">
-          <h2>AI 工具箱</h2>
+          <h2>AI 练习</h2>
         </div>
         <el-menu
           :default-active="activeIndex"
@@ -24,7 +24,7 @@
             <span>小说生成</span>
           </el-menu-item>
           <el-menu-item index="/app/create">
-            <el-icon><EditPen /></el-icon>
+            <el-icon><Plus /></el-icon>
             <span>应用创建</span>
           </el-menu-item>
         </el-menu>
@@ -40,7 +40,7 @@
 <script lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { House, VideoCamera, Edit, EditPen } from '@element-plus/icons-vue';
+import { House, VideoCamera, Edit, Plus } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -48,7 +48,7 @@ export default defineComponent({
     House,
     VideoCamera,
     Edit,
-    EditPen
+    Plus
   },
   setup() {
     const router = useRouter();
