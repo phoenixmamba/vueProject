@@ -37,9 +37,14 @@
       <h2>应用列表</h2>
       <div class="app-list-content">
         <!-- 应用列表将在这里显示 -->
-        <el-empty v-if="appList.length === 0" description="暂无应用数据" />
+        <el-empty v-if="!loading && appList.length === 0" description="暂无应用数据" />
         
-        <!-- 这里是应用列表的占位符，后续可以添加实际的应用列表 -->
+        <!-- 应用列表加载状态 -->
+        <div v-if="loading" class="loading-container">
+          <el-skeleton :rows="3" animated />
+        </div>
+        
+        <!-- 应用列表 -->
         <div v-else class="apps-grid">
           <el-card 
             v-for="app in appList" 
@@ -49,11 +54,11 @@
           >
             <template #header>
               <div class="app-card-header">
-                <span class="app-name">{{ app.name }}</span>
+                <span class="app-name">{{ app.appName }}</span>
               </div>
             </template>
             <div class="app-description">
-              {{ app.description }}
+              {{ app.initPrompt }}
             </div>
             <div class="app-actions">
               <el-button type="primary" size="small" @click="editApp(app)">
@@ -65,6 +70,17 @@
             </div>
           </el-card>
         </div>
+        
+        <!-- 分页 -->
+        <div class="pagination-container" v-if="pagination.total > pagination.pageSize">
+          <el-pagination
+            v-model:current-page="pagination.pageNum"
+            :page-size="pagination.pageSize"
+            :total="pagination.total"
+            layout="prev, pager, next, jumper"
+            @current-change="handlePageChange"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -75,11 +91,38 @@ import { defineComponent, reactive, ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
+import { listMyAppVoByPage } from '@/api/appController';
 
+// 定义需要的类型
 interface App {
   id: number;
   name: string;
   description: string;
+}
+
+interface AppVO {
+  id?: number;
+  appName?: string;
+  cover?: string;
+  initPrompt?: string;
+  codeGenType?: string;
+  deployKey?: string;
+  deployedTime?: string;
+  priority?: number;
+  userId?: number;
+  createTime?: string;
+  updateTime?: string;
+  user?: UserVO;
+}
+
+interface UserVO {
+  id?: number;
+  userAccount?: string;
+  userName?: string;
+  userAvatar?: string;
+  userProfile?: string;
+  userRole?: string;
+  createTime?: string;
 }
 
 export default defineComponent({
@@ -105,12 +148,14 @@ export default defineComponent({
       ]
     };
     
-    // 模拟应用列表数据
-    const appList = ref<App[]>([
-      // 示例数据
-      // { id: 1, name: '示例应用1', description: '这是一个示例应用的描述信息' },
-      // { id: 2, name: '示例应用2', description: '这是另一个示例应用的描述信息' }
-    ]);
+    // 应用列表数据
+    const appList = ref<AppVO[]>([]);
+    const loading = ref(false);
+    const pagination = reactive({
+      pageNum: 1,
+      pageSize: 10,
+      total: 0
+    });
     
     const submitForm = async () => {
       if (!formRef.value) return;
@@ -140,7 +185,7 @@ export default defineComponent({
         );
         
         // 获取返回的应用ID
-        const appId = response.data;
+         const appId = response.data;
         
         // 直接跳转到聊天页面
         router.push(`/app/${appId}`);
@@ -152,41 +197,70 @@ export default defineComponent({
       }
     };
     
-    const editApp = (app: App) => {
-      ElMessage.info(`编辑应用: ${app.name}`);
-      // 这里可以实现编辑逻辑
+    // 加载应用列表
+    const loadAppList = async () => {
+      loading.value = true;
+      try {
+        const res = await listMyAppVoByPage({
+          pageNum: pagination.pageNum,
+          pageSize: pagination.pageSize
+        });
+        
+        if (res.data && res.data.data?.records) {
+          appList.value = res.data.data.records;
+          pagination.total = res.data.data?.totalRow || 0;
+        }
+      } catch (error) {
+        console.error('加载应用列表失败:', error);
+        ElMessage.error('加载应用列表失败');
+      } finally {
+        loading.value = false;
+      }
     };
     
-    const deleteApp = (app: App) => {
+    // 分页变化处理
+    const handlePageChange = (pageNum: number) => {
+      pagination.pageNum = pageNum;
+      loadAppList();
+    };
+    
+    const editApp = (app: AppVO) => {
+      ElMessage.info(`编辑应用: ${app.appName}`);
+      // 这里可以实现编辑逻辑
+      router.push(`/app/${app.id}`);
+    };
+    
+    const deleteApp = (app: AppVO) => {
       ElMessageBox.confirm(
-        `确定要删除应用 "${app.name}" 吗？此操作不可恢复`,
+        `确定要删除应用 "${app.appName}" 吗？此操作不可恢复`,
         '删除确认',
         {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }
-      ).then(() => {
-        // 执行删除操作
-        const index = appList.value.findIndex(item => item.id === app.id);
-        if (index !== -1) {
-          appList.value.splice(index, 1);
+      ).then(async () => {
+        try {
+          await axios.post(
+            'http://localhost:8001/ai-meeting/api/app/delete',
+            { id: app.id },
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          // 重新加载列表
+          loadAppList();
           ElMessage.success('删除成功');
+        } catch (error) {
+          console.error('删除应用失败:', error);
+          ElMessage.error('删除应用失败');
         }
       }).catch(() => {
         // 用户取消删除
       });
-    };
-    
-    // 模拟加载应用列表
-    const loadAppList = async () => {
-      try {
-        // 模拟API调用
-        await new Promise(resolve => setTimeout(resolve, 500));
-        // 实际项目中这里会从服务器获取数据
-      } catch (error) {
-        ElMessage.error('加载应用列表失败');
-      }
     };
     
     onMounted(() => {
@@ -199,9 +273,12 @@ export default defineComponent({
       rules,
       isCreating,
       appList,
+      loading,
+      pagination,
       submitForm,
       editApp,
-      deleteApp
+      deleteApp,
+      handlePageChange
     };
   }
 });
@@ -236,10 +313,15 @@ export default defineComponent({
   min-height: 300px;
 }
 
+.loading-container {
+  padding: 20px;
+}
+
 .apps-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
+  margin-bottom: 20px;
 }
 
 .app-card {
@@ -270,6 +352,12 @@ export default defineComponent({
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
 }
 
 @media (max-width: 768px) {

@@ -75,11 +75,14 @@ export default defineComponent({
 
 <style scoped>
 .common-layout {
-  height: 100vh;
+  height: 100%;
+  min-height: 100vh;
 }
 
 .el-container {
   flex-direction: column;
+  height: 100%;
+  min-height: 100vh;
 }
 
 .header {
@@ -134,6 +137,7 @@ export default defineComponent({
   background-color: #f8f9fa;
   min-height: calc(100vh - 80px);
   flex: 1;
+  overflow: auto;
 }
 
 @media (max-width: 768px) {

@@ -11,10 +11,10 @@
         </el-tag> -->
       </div>
       <div class="header-right">
-        <el-button @click="showAppDetail">
+        <!-- <el-button @click="showAppDetail">
           <el-icon><InfoFilled /></el-icon>
           应用详情
-        </el-button>
+        </el-button> -->
         <el-button
             @click="downloadCode"
             :loading="downloading"
@@ -129,7 +129,8 @@
                   type="primary"
                   @click="sendMessage"
                   :loading="isGenerating"
-              >
+              > 
+                发送
                 <el-icon><Position /></el-icon>
               </el-button>
             </div>
@@ -201,7 +202,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, computed, defineComponent } from 'vue'
+import { ref, onMounted, nextTick, onUnmounted, computed, defineComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
@@ -217,9 +218,9 @@ import request from '@/request'
 
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import AppDetailModal from '@/components/AppDetailModal.vue'
-// import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
+import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
 // import aiAvatar from '@/assets/aiAvatar.png'
-// import { API_BASE_URL, getStaticPreviewUrl } from '@/config/env'
+import { API_BASE_URL, getStaticPreviewUrl } from '@/config/env'
 import { VisualEditor, type ElementInfo } from '@/utils/visualEditor'
 /// <reference path="@/api/typings.d.ts" />
 
@@ -228,6 +229,15 @@ import { Promotion, Position, InfoFilled, Download, EditPen } from '@element-plu
 
 export default defineComponent({
   name: 'AppChatPage',
+  components: {
+    MarkdownRenderer,
+    AppDetailModal,
+    Promotion,
+    Position,
+    // InfoFilled,
+    Download,
+    // EditPen,
+  },
   // props: {
   //   appId: {
   //     type: String,
@@ -305,6 +315,7 @@ export default defineComponent({
 
     // 加载对话历史
     const loadChatHistory = async (isLoadMore = false) => {
+      console.log('加载对话历史，loadingHistory.value:', loadingHistory.value)
       if (!appId.value || loadingHistory.value) return
       loadingHistory.value = true
       try {
@@ -318,6 +329,7 @@ export default defineComponent({
           params.lastCreateTime = lastCreateTime.value
         }
         const res = await listAppChatHistory(params)
+        console.log('====加载对话历史返回数据：', res)
         if (res.data.code === 0 && res.data.data) {
           const chatHistories = res.data.data.records || []
           if (chatHistories.length > 0) {
@@ -434,6 +446,20 @@ export default defineComponent({
       await generateCode(prompt, aiMessageIndex)
     }
 
+    function testMsg(){
+  // 添加AI消息
+  messages.value.push({
+    type: 'ai',
+    content: '这是一条测试消息！',
+    loading: false,
+  });
+  
+  // 确保DOM更新后滚动到底部
+  nextTick(() => {
+    scrollToBottom();
+  });
+}
+
     // 发送消息
     const sendMessage = async () => {
       if (!userInput.value.trim() || isGenerating.value) {
@@ -492,7 +518,8 @@ export default defineComponent({
       try {
         const API_BASE_URL = 'http://localhost:8001/ai-meeting/api'
         // 获取 axios 配置的 baseURL
-        const baseURL = request.defaults.baseURL || API_BASE_URL
+  
+        const baseURL = API_BASE_URL
 
         // 构建URL参数
         const params = new URLSearchParams({
@@ -517,13 +544,18 @@ export default defineComponent({
             // 解析JSON包装的数据
             const parsed = JSON.parse(event.data)
             const content = parsed.d
-
+            
             // 拼接内容
             if (content !== undefined && content !== null) {
               fullContent += content
+              // 使用 Vue 的响应式更新确保视图更新
               messages.value[aiMessageIndex].content = fullContent
               messages.value[aiMessageIndex].loading = false
-              scrollToBottom()
+              
+              // 强制触发更新，确保内容显示
+              nextTick(() => {
+                scrollToBottom()
+              })
             }
           } catch (error) {
             console.error('解析消息失败:', error)
@@ -605,9 +637,9 @@ export default defineComponent({
     const updatePreview = () => {
       if (appId.value) {
         // const codeGenType = appInfo.value?.codeGenType || CodeGenTypeEnum.HTML
-        // const newPreviewUrl = getStaticPreviewUrl(codeGenType, appId.value)
-        // previewUrl.value = newPreviewUrl
-        // previewReady.value = true
+        const newPreviewUrl = getStaticPreviewUrl(appId.value)
+        previewUrl.value = newPreviewUrl
+        previewReady.value = true
       }
     }
 
@@ -773,6 +805,17 @@ export default defineComponent({
       })
     })
 
+    // 监听消息变化，自动滚动到底部
+    watch(
+      () => messages.value,
+      () => {
+        nextTick(() => {
+          scrollToBottom()
+        })
+      },
+      { deep: true }
+    )
+
     // 清理资源
     onUnmounted(() => {
       // EventSource 会在组件卸载时自动清理
@@ -798,13 +841,14 @@ export default defineComponent({
       selectedElementInfo,
       appDetailVisible,
       showAppDetail,
-      loadMoreHistory,
+       loadMoreHistory,
       // 获取应用信息
       fetchAppInfo,
       // 发送初始消息
       sendInitialMessage,
       // 发送消息
       sendMessage,
+      testMsg,
       // 生成代码 - 使用 EventSource 处理流式响应
       generateCode,
       // 错误处理函数
@@ -838,7 +882,8 @@ export default defineComponent({
 
 <style scoped>
 #appChatPage {
-  height: 100vh;
+  height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -851,6 +896,8 @@ export default defineComponent({
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .header-left {
@@ -882,6 +929,7 @@ export default defineComponent({
   gap: 16px;
   padding: 8px;
   overflow: hidden;
+  min-height: 0; /* 允许子元素收缩 */
 }
 
 /* 左侧对话区域 */
@@ -893,13 +941,17 @@ export default defineComponent({
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  min-height: 0; /* 允许收缩 */
+  max-height: calc(100vh - 200px); /* 限制最大高度 */
 }
 
 .messages-container {
-  flex: 0.9;
+  flex: 1;
   padding: 16px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  min-height: 0; /* 允许收缩 */
+  max-height: calc(100vh - 300px); /* 限制最大高度确保可见 */
 }
 
 .message-item {
@@ -965,6 +1017,8 @@ export default defineComponent({
 
 .input-wrapper {
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .input-wrapper :deep(.el-textarea__inner) {
@@ -977,6 +1031,23 @@ export default defineComponent({
   right: 8px;
 }
 
+/* 在小屏幕上调整输入区域 */
+@media (max-width: 480px) {
+  .input-actions {
+    position: relative;
+    bottom: 0;
+    right: 0;
+    margin-top: 10px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .input-wrapper :deep(.el-textarea__inner) {
+    padding-right: 12px;
+    padding-bottom: 40px;
+  }
+}
+
 /* 右侧预览区域 */
 .preview-section {
   flex: 3;
@@ -986,6 +1057,7 @@ export default defineComponent({
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  min-height: 0; /* 允许收缩 */
 }
 
 .preview-header {
@@ -994,6 +1066,8 @@ export default defineComponent({
   align-items: center;
   padding: 16px;
   border-bottom: 1px solid #e8e8e8;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .preview-header h3 {
@@ -1011,6 +1085,7 @@ export default defineComponent({
   flex: 1;
   position: relative;
   overflow: hidden;
+  min-height: 0; /* 允许收缩 */
 }
 
 .preview-placeholder {
@@ -1050,7 +1125,7 @@ export default defineComponent({
   margin: 0 16px;
 }
 
-/* 响应式设计 */
+/* 中等屏幕 */
 @media (max-width: 1024px) {
   .main-content {
     flex-direction: column;
@@ -1058,14 +1133,81 @@ export default defineComponent({
 
   .chat-section,
   .preview-section {
-    flex: none;
-    height: 50vh;
+    flex: 1;
+    min-height: 50vh;
+  }
+  
+  .chat-section {
+    max-height: unset; /* 在小屏幕上移除最大高度限制 */
+  }
+  
+  .messages-container {
+    max-height: unset; /* 在小屏幕上移除最大高度限制 */
+  }
+}
+
+/* 小屏幕 */
+@media (max-width: 480px) {
+  #appChatPage {
+    padding: 10px;
+  }
+  
+  .header-bar {
+    padding: 10px;
+  }
+  
+  .header-right .el-button {
+    min-width: calc(50% - 4px);
+  }
+  
+  .main-content {
+    padding: 5px;
+    gap: 5px;
+  }
+  
+  .messages-container {
+    padding: 10px;
+  }
+  
+  .input-container {
+    padding: 10px;
+  }
+  
+  .message-content {
+    max-width: 90%;
+  }
+  
+  .preview-header {
+    padding: 12px;
+  }
+  
+  .preview-header h3 {
+    font-size: 14px;
   }
 }
 
 @media (max-width: 768px) {
   .header-bar {
     padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .header-left {
+    width: 100%;
+  }
+
+  .header-right {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-right .el-button {
+    flex: 1;
+    min-width: calc(33% - 6px);
   }
 
   .app-name {
@@ -1144,6 +1286,27 @@ export default defineComponent({
   .edit-mode-active:hover {
     background-color: #73d13d !important;
     border-color: #73d13d !important;
+  }
+
+  /* 调整按钮在小屏幕上的显示 */
+  .input-actions .el-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .preview-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .preview-actions .el-button {
+    margin-right: 8px;
   }
 }
 </style>
