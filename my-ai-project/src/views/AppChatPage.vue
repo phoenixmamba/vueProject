@@ -103,7 +103,15 @@
 
         <!-- 用户消息输入框 -->
         <div class="input-container">
-          <div class="input-wrapper">
+          <div class="input-wrapper" ref="inputWrapperRef">
+            <!-- 垂直拖拽手柄 -->
+            <div 
+              class="resize-handle" 
+              @mousedown="initResize"
+              title="拖拽调整输入框高度"
+            >
+              ⋮
+            </div>
             <!-- <el-tooltip v-if="!isOwner" content="无法在别人的作品下对话哦~" placement="top">
               <el-input
                   v-model="userInput"
@@ -119,10 +127,11 @@
                 v-model="userInput"
                 :placeholder="getInputPlaceholder()"
                 type="textarea"
-                :rows="4"
+                :rows="6"
                 :maxlength="1000"
                 @keydown.enter.prevent="sendMessage"
                 :disabled="isGenerating"
+                class="resizable-textarea"
             />
             <div class="input-actions">
               <el-button
@@ -268,6 +277,7 @@ export default defineComponent({
     const userInput = ref('')
     const isGenerating = ref(false)
     const messagesContainer = ref<HTMLElement>()
+    const inputWrapperRef = ref<HTMLElement | null>(null)
 
     // 对话历史相关
     const loadingHistory = ref(false)
@@ -510,6 +520,33 @@ export default defineComponent({
       await generateCode(message, aiMessageIndex)
     }
 
+    // 初始化拖拽调整大小
+    const initResize = (e: MouseEvent) => {
+      e.preventDefault();
+      
+      const startY = e.clientY;
+      const textarea = inputWrapperRef.value?.querySelector('textarea');
+      if (!textarea) return;
+      
+      const startHeight = parseInt(document.defaultView?.getComputedStyle(textarea).height || '0', 10);
+      
+      const doDrag = (e: MouseEvent) => {
+        const newHeight = startHeight - (e.clientY - startY); // 修正方向
+        
+        if (textarea && newHeight > 50) { // 最小高度50px
+          textarea.style.height = newHeight + 'px';
+        }
+      };
+      
+      const stopDrag = () => {
+        document.documentElement.removeEventListener('mousemove', doDrag, false);
+        document.documentElement.removeEventListener('mouseup', stopDrag, false);
+      };
+      
+      document.documentElement.addEventListener('mousemove', doDrag, false);
+      document.documentElement.addEventListener('mouseup', stopDrag, false);
+    };
+
     // 生成代码 - 使用 EventSource 处理流式响应
     const generateCode = async (userMessage: string, aiMessageIndex: number) => {
       let eventSource: EventSource | null = null
@@ -659,7 +696,7 @@ export default defineComponent({
       downloading.value = true
       try {
         const API_BASE_URL = request.defaults.baseURL || ''
-        const url = `${API_BASE_URL}/app/download/${appId.value}`
+        const url = `${API_BASE_URL}/api/app/download/${appId.value}`
         const response = await fetch(url, {
           method: 'GET',
           credentials: 'include',
@@ -827,6 +864,7 @@ export default defineComponent({
       userInput,
       isGenerating,
       messagesContainer,
+      inputWrapperRef,
       loadingHistory,
       hasMoreHistory,
       lastCreateTime,
@@ -841,7 +879,8 @@ export default defineComponent({
       selectedElementInfo,
       appDetailVisible,
       showAppDetail,
-       loadMoreHistory,
+      loadMoreHistory,
+      initResize,
       // 获取应用信息
       fetchAppInfo,
       // 发送初始消息
@@ -1023,6 +1062,8 @@ export default defineComponent({
 
 .input-wrapper :deep(.el-textarea__inner) {
   padding-right: 50px;
+  padding-top: 15px; /* 为顶部拖拽手柄留出空间 */
+  resize: none; /* 禁用默认的textarea调整大小 */
 }
 
 .input-actions {
@@ -1031,21 +1072,33 @@ export default defineComponent({
   right: 8px;
 }
 
-/* 在小屏幕上调整输入区域 */
-@media (max-width: 480px) {
-  .input-actions {
-    position: relative;
-    bottom: 0;
-    right: 0;
-    margin-top: 10px;
-    display: flex;
-    justify-content: flex-end;
-  }
-  
-  .input-wrapper :deep(.el-textarea__inner) {
-    padding-right: 12px;
-    padding-bottom: 40px;
-  }
+/* 垂直拖拽手柄 */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: #f0f0f0;
+  color: #666;
+}
+
+/* 可调整大小的文本框 */
+.resizable-textarea :deep(.el-textarea__inner) {
+  resize: none; /* 禁用默认的textarea调整大小 */
+  min-height: 120px; /* 设置最小高度 */
 }
 
 /* 右侧预览区域 */
@@ -1307,6 +1360,11 @@ export default defineComponent({
 
   .preview-actions .el-button {
     margin-right: 8px;
+  }
+  
+  /* 移动端隐藏拖拽手柄 */
+  .resize-handle {
+    display: none;
   }
 }
 </style>

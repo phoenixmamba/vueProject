@@ -47,6 +47,8 @@ const renderedMarkdown = computed(() => {
   line-height: 1.6;
   color: #333;
   word-wrap: break-word;
+  white-space: pre-wrap; /* 添加此行以保留空白符和换行符 */
+  text-align: left; /* 确保内容左对齐 */
 }
 
 /* 全局样式，影响 v-html 内容 */
@@ -59,36 +61,24 @@ const renderedMarkdown = computed(() => {
   margin: 1.5em 0 0.5em 0;
   font-weight: 600;
   line-height: 1.25;
-}
-
-.markdown-content :deep(h1) {
-  font-size: 1.5em;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.3em;
-}
-
-.markdown-content :deep(h2) {
-  font-size: 1.3em;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 0.3em;
-}
-
-.markdown-content :deep(h3) {
-  font-size: 1.1em;
+  text-align: left; /* 标题左对齐 */
 }
 
 .markdown-content :deep(p) {
   margin: 0.8em 0;
+  text-align: left; /* 段落左对齐 */
 }
 
 .markdown-content :deep(ul),
 .markdown-content :deep(ol) {
   margin: 0.8em 0;
   padding-left: 1.5em;
+  text-align: left; /* 列表左对齐 */
 }
 
 .markdown-content :deep(li) {
   margin: 0.3em 0;
+  text-align: left; /* 列表项左对齐 */
 }
 
 .markdown-content :deep(blockquote) {
@@ -97,6 +87,7 @@ const renderedMarkdown = computed(() => {
   border-left: 4px solid #ddd;
   background-color: #f9f9f9;
   color: #666;
+  text-align: left; /* 引用块左对齐 */
 }
 
 .markdown-content :deep(code) {
@@ -105,6 +96,7 @@ const renderedMarkdown = computed(() => {
   border-radius: 3px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 0.9em;
+  text-align: left; /* 代码左对齐 */
 }
 
 .markdown-content :deep(pre) {
@@ -114,6 +106,7 @@ const renderedMarkdown = computed(() => {
   padding: 1em;
   overflow-x: auto;
   margin: 1em 0;
+  text-align: left; /* 代码块左对齐 */
 }
 
 .markdown-content :deep(pre code) {

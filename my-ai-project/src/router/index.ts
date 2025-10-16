@@ -4,6 +4,7 @@ import MeetingView from '../views/MeetingView.vue';
 import NovelView from '../views/NovelView.vue';
 import AppChatPage from '../views/AppChatPage.vue';
 import AppCreateView from '../views/AppCreateView.vue';
+import PromptAssistantView from '../views/PromptAssistantView.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -31,6 +32,11 @@ const routes: Array<RouteRecordRaw> = [
     name: 'AppChat',
     component: AppChatPage,
     props: true
+  },
+  {
+    path: '/prompt-assistant',
+    name: 'PromptAssistant',
+    component: PromptAssistantView
   }
 ];
 

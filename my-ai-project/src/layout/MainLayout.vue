@@ -27,6 +27,10 @@
             <el-icon><Plus /></el-icon>
             <span>应用创建</span>
           </el-menu-item>
+          <el-menu-item index="/prompt-assistant">
+            <el-icon><MagicStick /></el-icon>
+            <span>Prompt助手</span>
+          </el-menu-item>
         </el-menu>
       </el-header>
       
@@ -40,7 +44,7 @@
 <script lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { House, VideoCamera, Edit, Plus } from '@element-plus/icons-vue';
+import { House, VideoCamera, Edit, Plus, MagicStick } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -48,7 +52,8 @@ export default defineComponent({
     House,
     VideoCamera,
     Edit,
-    Plus
+    Plus,
+    MagicStick
   },
   setup() {
     const router = useRouter();
