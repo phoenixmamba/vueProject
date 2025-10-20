@@ -19,6 +19,7 @@ module.exports = {
     defineProps: 'readonly',
     defineEmits: 'readonly',
     defineExpose: 'readonly',
+    defineOptions: 'readonly',
     withDefaults: 'readonly'
   },
   overrides: [
