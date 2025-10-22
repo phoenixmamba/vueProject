@@ -31,6 +31,10 @@
             <el-icon><MagicStick /></el-icon>
             <span>Prompt助手</span>
           </el-menu-item>
+          <el-menu-item index="/mcp-debug">
+            <el-icon><Setting /></el-icon>
+            <span>MCP调试</span>
+          </el-menu-item>
         </el-menu>
       </el-header>
       
@@ -44,7 +48,7 @@
 <script lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { House, VideoCamera, Edit, Plus, MagicStick } from '@element-plus/icons-vue';
+import { House, VideoCamera, Edit, Plus, MagicStick, Setting } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -53,7 +57,8 @@ export default defineComponent({
     VideoCamera,
     Edit,
     Plus,
-    MagicStick
+    MagicStick,
+    Setting
   },
   setup() {
     const router = useRouter();

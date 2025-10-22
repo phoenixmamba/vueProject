@@ -24,6 +24,11 @@
           <h3>Prompt助手</h3>
           <p>优化您的提示词</p>
         </div>
+        <div class="feature-item" @click="goTo('/mcp-debug')">
+          <el-icon class="feature-icon"><Setting /></el-icon>
+          <h3>MCP调试</h3>
+          <p>调试MCP测试接口</p>
+        </div>
       </div>
     </div>
   </div>
@@ -31,7 +36,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { VideoCamera, Edit, Plus, MagicStick } from '@element-plus/icons-vue';
+import { VideoCamera, Edit, Plus, MagicStick, Setting } from '@element-plus/icons-vue';
 
 defineOptions({
   name: 'HomeView'

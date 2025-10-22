@@ -5,6 +5,7 @@ import NovelView from '../views/NovelView.vue';
 import AppChatPage from '../views/AppChatPage.vue';
 import AppCreateView from '../views/AppCreateView.vue';
 import PromptAssistantView from '../views/PromptAssistantView.vue';
+import McpDebugView from '../views/McpDebugView.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -37,6 +38,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/prompt-assistant',
     name: 'PromptAssistant',
     component: PromptAssistantView
+  },
+  {
+    path: '/mcp-debug',
+    name: 'McpDebug',
+    component: McpDebugView
   }
 ];
 
