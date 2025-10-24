@@ -159,7 +159,7 @@ export async function listMyAppVoByPage(
   body: API.AppQueryRequest,
   options?: { [key: string]: any }
 ) {
-  return request<API.BaseResponsePageAppVO>('/app/my/list/page/vo', {
+  return request<API.BaseResponsePageAppVO>('/api/app/my/list/page/vo', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

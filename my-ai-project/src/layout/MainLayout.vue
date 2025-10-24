@@ -3,7 +3,7 @@
     <el-container>
       <el-header class="header">
         <div class="logo">
-          <h2>AI 工具箱</h2>
+          <h2>AI 练习</h2>
         </div>
         <el-menu
           :default-active="activeIndex"
@@ -24,8 +24,16 @@
             <span>小说生成</span>
           </el-menu-item>
           <el-menu-item index="/app/create">
-            <el-icon><EditPen /></el-icon>
+            <el-icon><Plus /></el-icon>
             <span>应用创建</span>
+          </el-menu-item>
+          <el-menu-item index="/prompt-assistant">
+            <el-icon><MagicStick /></el-icon>
+            <span>Prompt助手</span>
+          </el-menu-item>
+          <el-menu-item index="/mcp-debug">
+            <el-icon><Setting /></el-icon>
+            <span>MCP调试</span>
           </el-menu-item>
         </el-menu>
       </el-header>
@@ -40,7 +48,7 @@
 <script lang="ts">
 import { defineComponent, ref, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { House, VideoCamera, Edit, EditPen } from '@element-plus/icons-vue';
+import { House, VideoCamera, Edit, Plus, MagicStick, Setting } from '@element-plus/icons-vue';
 
 export default defineComponent({
   name: 'MainLayout',
@@ -48,7 +56,9 @@ export default defineComponent({
     House,
     VideoCamera,
     Edit,
-    EditPen
+    Plus,
+    MagicStick,
+    Setting
   },
   setup() {
     const router = useRouter();
@@ -75,11 +85,14 @@ export default defineComponent({
 
 <style scoped>
 .common-layout {
-  height: 100vh;
+  height: 100%;
+  min-height: 100vh;
 }
 
 .el-container {
   flex-direction: column;
+  height: 100%;
+  min-height: 100vh;
 }
 
 .header {
@@ -134,6 +147,7 @@ export default defineComponent({
   background-color: #f8f9fa;
   min-height: calc(100vh - 80px);
   flex: 1;
+  overflow: auto;
 }
 
 @media (max-width: 768px) {

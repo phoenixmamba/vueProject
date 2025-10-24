@@ -1,5 +1,7 @@
 <template>
   <div id="appChatPage">
+
+    
     <!-- 顶部栏 -->
     <div class="header-bar">
       <div class="header-left">
@@ -9,10 +11,10 @@
         </el-tag> -->
       </div>
       <div class="header-right">
-        <el-button @click="showAppDetail">
+        <!-- <el-button @click="showAppDetail">
           <el-icon><InfoFilled /></el-icon>
           应用详情
-        </el-button>
+        </el-button> -->
         <el-button
             @click="downloadCode"
             :loading="downloading"
@@ -101,7 +103,15 @@
 
         <!-- 用户消息输入框 -->
         <div class="input-container">
-          <div class="input-wrapper">
+          <div class="input-wrapper" ref="inputWrapperRef">
+            <!-- 垂直拖拽手柄 -->
+            <div 
+              class="resize-handle" 
+              @mousedown="initResize"
+              title="拖拽调整输入框高度"
+            >
+              ⋮
+            </div>
             <!-- <el-tooltip v-if="!isOwner" content="无法在别人的作品下对话哦~" placement="top">
               <el-input
                   v-model="userInput"
@@ -117,17 +127,19 @@
                 v-model="userInput"
                 :placeholder="getInputPlaceholder()"
                 type="textarea"
-                :rows="4"
+                :rows="6"
                 :maxlength="1000"
                 @keydown.enter.prevent="sendMessage"
                 :disabled="isGenerating"
+                class="resizable-textarea"
             />
             <div class="input-actions">
               <el-button
                   type="primary"
                   @click="sendMessage"
                   :loading="isGenerating"
-              >
+              > 
+                发送
                 <el-icon><Position /></el-icon>
               </el-button>
             </div>
@@ -139,7 +151,7 @@
         <div class="preview-header">
           <h3>生成后的网页展示</h3>
           <div class="preview-actions">
-            <el-button
+            <!-- <el-button
                 type="danger"
                 v-show="isEditMode"
                 @click="toggleEditMode"
@@ -154,7 +166,7 @@
             >
               <el-icon><EditPen /></el-icon>
               编辑模式
-            </el-button>
+            </el-button> -->
             <el-button v-if="previewUrl" link @click="openInNewTab">
               <el-icon><Promotion /></el-icon>
               新窗口打开
@@ -198,10 +210,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted, computed } from 'vue'
+<script lang="ts">
+import { ref, onMounted, nextTick, onUnmounted, computed, defineComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
 // import { useLoginUserStore } from '@/stores/loginUser'
 import {
   getAppVoById,
@@ -214,550 +227,702 @@ import request from '@/request'
 
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import AppDetailModal from '@/components/AppDetailModal.vue'
-// import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
+import DeploySuccessModal from '@/components/DeploySuccessModal.vue'
 // import aiAvatar from '@/assets/aiAvatar.png'
-// import { API_BASE_URL, getStaticPreviewUrl } from '@/config/env'
+import { API_BASE_URL, getStaticPreviewUrl } from '@/config/env'
 import { VisualEditor, type ElementInfo } from '@/utils/visualEditor'
 /// <reference path="@/api/typings.d.ts" />
 
 // 替换 Ant Design Vue 的图标为 Element Plus 的图标
 import { Promotion, Position, InfoFilled, Download, EditPen } from '@element-plus/icons-vue'
 
-
-const route = useRoute()
-const router = useRouter()
-// const loginUserStore = useLoginUserStore()
-
-// 应用信息
-const appInfo = ref()
-const appId = ref<any>()
-
-// 对话相关
-interface Message {
-  type: 'user' | 'ai'
-  content: string
-  loading?: boolean
-  createTime?: string
-}
-
-const messages = ref<Message[]>([])
-const userInput = ref('')
-const isGenerating = ref(false)
-const messagesContainer = ref<HTMLElement>()
-
-// 对话历史相关
-const loadingHistory = ref(false)
-const hasMoreHistory = ref(false)
-const lastCreateTime = ref<string>()
-const historyLoaded = ref(false)
-
-// 预览相关
-const previewUrl = ref('')
-const previewReady = ref(false)
-
-// 部署相关
-const deploying = ref(false)
-const deployModalVisible = ref(false)
-const deployUrl = ref('')
-
-// 下载相关
-const downloading = ref(false)
-
-// 可视化编辑相关
-const isEditMode = ref(false)
-const selectedElementInfo = ref<ElementInfo | null>(null)
-const visualEditor = new VisualEditor({
-  onElementSelected: (elementInfo: ElementInfo) => {
-    selectedElementInfo.value = elementInfo
+export default defineComponent({
+  name: 'AppChatPage',
+  components: {
+    MarkdownRenderer,
+    AppDetailModal,
+    Promotion,
+    Position,
+    // InfoFilled,
+    Download,
+    // EditPen,
   },
-})
+  // props: {
+  //   appId: {
+  //     type: String,
+  //     required: true
+  //   }
+  // },
+  setup(props) {
+    // // 添加测试ID传递弹窗
+    // const testIdDialogVisible = ref(true);
+    
+    const route = useRoute()
+    const router = useRouter()
+    // const loginUserStore = useLoginUserStore()
 
-// // 权限相关
-// const isOwner = computed(() => {
-//   return appInfo.value?.userId === loginUserStore.loginUser.id
-// })
-
-// const isAdmin = computed(() => {
-//   return loginUserStore.loginUser.userRole === 'admin'
-// })
-
-// 应用详情相关
-const appDetailVisible = ref(false)
-
-// 显示应用详情
-const showAppDetail = () => {
-  appDetailVisible.value = true
-}
-
-// 加载对话历史
-const loadChatHistory = async (isLoadMore = false) => {
-  if (!appId.value || loadingHistory.value) return
-  loadingHistory.value = true
-  try {
-    const params = {
-      appId: appId.value,
-      pageSize: 10,
-      lastCreateTime: lastCreateTime.value,
+    // 应用信息
+    const appInfo = ref()
+    const appId = ref<any>(route.params.id as string)
+    console.log('AppChatPage 接收到的 appId:', appId.value);
+    // 对话相关
+    interface Message {
+      type: 'user' | 'ai'
+      content: string
+      loading?: boolean
+      createTime?: string
     }
-    // 如果是加载更多，传递最后一条消息的创建时间作为游标
-    if (isLoadMore && lastCreateTime.value) {
-      params.lastCreateTime = lastCreateTime.value
-    }
-    const res = await listAppChatHistory(params)
-    if (res.data.code === 0 && res.data.data) {
-      const chatHistories = res.data.data.records || []
-      if (chatHistories.length > 0) {
-        // 将对话历史转换为消息格式，并按时间正序排列（老消息在前）
-        const historyMessages: Message[] = chatHistories
-            .map((chat) => ({
-              type: (chat.messageType === 'user' ? 'user' : 'ai') as 'user' | 'ai',
-              content: chat.message || '',
-              createTime: chat.createTime,
-            }))
-            .reverse() // 反转数组，让老消息在前
-        if (isLoadMore) {
-          // 加载更多时，将历史消息添加到开头
-          messages.value.unshift(...historyMessages)
-        } else {
-          // 初始加载，直接设置消息列表
-          messages.value = historyMessages
-        }
-        // 更新游标
-        lastCreateTime.value = chatHistories[chatHistories.length - 1]?.createTime
-        // 检查是否还有更多历史
-        hasMoreHistory.value = chatHistories.length === 10
-      } else {
-        hasMoreHistory.value = false
-      }
-      historyLoaded.value = true
-    }
-  } catch (error) {
-    console.error('加载对话历史失败：', error)
-    ElMessage.error('加载对话历史失败')
-  } finally {
-    loadingHistory.value = false
-  }
-}
 
-// 加载更多历史消息
-const loadMoreHistory = async () => {
-  await loadChatHistory(true)
-}
+    const messages = ref<Message[]>([])
+    const userInput = ref('')
+    const isGenerating = ref(false)
+    const messagesContainer = ref<HTMLElement>()
+    const inputWrapperRef = ref<HTMLElement | null>(null)
 
-// 获取应用信息
-const fetchAppInfo = async () => {
-  const id = route.params.id as string || '1'
-  if (!id) {
-    ElMessage.error('应用ID不存在')
-    router.push('/')
-    return
-  }
+    // 对话历史相关
+    const loadingHistory = ref(false)
+    const hasMoreHistory = ref(false)
+    const lastCreateTime = ref<string>()
+    const historyLoaded = ref(false)
 
-  appId.value = id
+    // 预览相关
+    const previewUrl = ref('')
+    const previewReady = ref(false)
 
-  try {
-    const res = await getAppVoById({ id: id as unknown as number })
-    if (res.data.code === 0 && res.data.data) {
-      appInfo.value = res.data.data
+    // 部署相关
+    const deploying = ref(false)
+    const deployModalVisible = ref(false)
+    const deployUrl = ref('')
 
-      // 先加载对话历史
-      await loadChatHistory()
-      // 如果有至少2条对话记录，展示对应的网站
-      if (messages.value.length >= 2) {
-        updatePreview()
-      }
-      // 检查是否需要自动发送初始提示词
-      // 只有在是自己的应用且没有对话历史时才自动发送
-      if (
-          appInfo.value.initPrompt &&
-          messages.value.length === 0 &&
-          historyLoaded.value
-      ) {
-        await sendInitialMessage(appInfo.value.initPrompt)
-      }
-    } else {
-      ElMessage.error('获取应用信息失败')
-      router.push('/')
-    }
-  } catch (error) {
-    console.error('获取应用信息失败：', error)
-    ElMessage.error('获取应用信息失败')
-    router.push('/')
-  }
-}
+    // 下载相关
+    const downloading = ref(false)
 
-// 发送初始消息
-const sendInitialMessage = async (prompt: string) => {
-  // 添加用户消息
-  messages.value.push({
-    type: 'user',
-    content: prompt,
-  })
-
-  // 添加AI消息占位符
-  const aiMessageIndex = messages.value.length
-  messages.value.push({
-    type: 'ai',
-    content: '',
-    loading: true,
-  })
-
-  await nextTick()
-  scrollToBottom()
-
-  // 开始生成
-  isGenerating.value = true
-  await generateCode(prompt, aiMessageIndex)
-}
-
-// 发送消息
-const sendMessage = async () => {
-  if (!userInput.value.trim() || isGenerating.value) {
-    return
-  }
-
-  let message = userInput.value.trim()
-  // 如果有选中的元素，将元素信息添加到提示词中
-  if (selectedElementInfo.value) {
-    let elementContext = `\n\n选中元素信息：`
-    if (selectedElementInfo.value.pagePath) {
-      elementContext += `\n- 页面路径: ${selectedElementInfo.value.pagePath}`
-    }
-    elementContext += `\n- 标签: ${selectedElementInfo.value.tagName.toLowerCase()}\n- 选择器: ${selectedElementInfo.value.selector}`
-    if (selectedElementInfo.value.textContent) {
-      elementContext += `\n- 当前内容: ${selectedElementInfo.value.textContent.substring(0, 100)}`
-    }
-    message += elementContext
-  }
-  userInput.value = ''
-  // 添加用户消息（包含元素信息）
-  messages.value.push({
-    type: 'user',
-    content: message,
-  })
-
-  // 发送消息后，清除选中元素并退出编辑模式
-  if (selectedElementInfo.value) {
-    clearSelectedElement()
-    if (isEditMode.value) {
-      toggleEditMode()
-    }
-  }
-
-  // 添加AI消息占位符
-  const aiMessageIndex = messages.value.length
-  messages.value.push({
-    type: 'ai',
-    content: '',
-    loading: true,
-  })
-
-  await nextTick()
-  scrollToBottom()
-
-  // 开始生成
-  isGenerating.value = true
-  await generateCode(message, aiMessageIndex)
-}
-
-// 生成代码 - 使用 EventSource 处理流式响应
-const generateCode = async (userMessage: string, aiMessageIndex: number) => {
-  let eventSource: EventSource | null = null
-  let streamCompleted = false
-
-  try {
-    const API_BASE_URL = 'http://localhost:8123/api'
-    // 获取 axios 配置的 baseURL
-    const baseURL = request.defaults.baseURL || API_BASE_URL
-
-    // 构建URL参数
-    const params = new URLSearchParams({
-      appId: appId.value || '',
-      message: userMessage,
+    // 可视化编辑相关
+    const isEditMode = ref(false)
+    const selectedElementInfo = ref<ElementInfo | null>(null)
+    const visualEditor = new VisualEditor({
+      onElementSelected: (elementInfo: ElementInfo) => {
+        selectedElementInfo.value = elementInfo
+      },
     })
 
-    const url = `${baseURL}/app/chat/gen/code?${params}`
+    // // 权限相关
+    // const isOwner = computed(() => {
+    //   return appInfo.value?.userId === loginUserStore.loginUser.id
+    // })
 
-    // 创建 EventSource 连接
-    eventSource = new EventSource(url, {
-      withCredentials: true,
-    })
+    // const isAdmin = computed(() => {
+    //   return loginUserStore.loginUser.userRole === 'admin'
+    // })
 
-    let fullContent = ''
+    // 应用详情相关
+    const appDetailVisible = ref(false)
 
-    // 处理接收到的消息
-    eventSource.onmessage = function (event) {
-      if (streamCompleted) return
+    // 显示应用详情
+    const showAppDetail = () => {
+      appDetailVisible.value = true
+    }
 
+    // 加载对话历史
+    const loadChatHistory = async (isLoadMore = false) => {
+      console.log('加载对话历史，loadingHistory.value:', loadingHistory.value)
+      if (!appId.value || loadingHistory.value) return
+      loadingHistory.value = true
       try {
-        // 解析JSON包装的数据
-        const parsed = JSON.parse(event.data)
-        const content = parsed.d
-
-        // 拼接内容
-        if (content !== undefined && content !== null) {
-          fullContent += content
-          messages.value[aiMessageIndex].content = fullContent
-          messages.value[aiMessageIndex].loading = false
-          scrollToBottom()
+        const params = {
+          appId: appId.value,
+          pageSize: 10,
+          lastCreateTime: lastCreateTime.value,
+        }
+        // 如果是加载更多，传递最后一条消息的创建时间作为游标
+        if (isLoadMore && lastCreateTime.value) {
+          params.lastCreateTime = lastCreateTime.value
+        }
+        const res = await listAppChatHistory(params)
+        console.log('====加载对话历史返回数据：', res)
+        if (res.data.code === 0 && res.data.data) {
+          const chatHistories = res.data.data.records || []
+          if (chatHistories.length > 0) {
+            // 将对话历史转换为消息格式，并按时间正序排列（老消息在前）
+            const historyMessages: Message[] = chatHistories
+                .map((chat) => ({
+                  type: (chat.messageType === 'user' ? 'user' : 'ai') as 'user' | 'ai',
+                  content: chat.message || '',
+                  createTime: chat.createTime,
+                }))
+                .reverse() // 反转数组，让老消息在前
+            if (isLoadMore) {
+              // 加载更多时，将历史消息添加到开头
+              messages.value.unshift(...historyMessages)
+            } else {
+              // 初始加载，直接设置消息列表
+              messages.value = historyMessages
+            }
+            // 更新游标
+            lastCreateTime.value = chatHistories[chatHistories.length - 1]?.createTime
+            // 检查是否还有更多历史
+            hasMoreHistory.value = chatHistories.length === 10
+          } else {
+            hasMoreHistory.value = false
+          }
+          historyLoaded.value = true
         }
       } catch (error) {
-        console.error('解析消息失败:', error)
+        console.error('加载对话历史失败：', error)
+        ElMessage.error('加载对话历史失败')
+      } finally {
+        loadingHistory.value = false
+      }
+    }
+
+    // 加载更多历史消息
+    const loadMoreHistory = async () => {
+      await loadChatHistory(true)
+    }
+
+    // 获取应用信息
+    const fetchAppInfo = async () => {
+      const id = route.params.id
+      if (!id) {
+        ElMessage.error('应用ID不存在')
+        router.push('/')
+        return
+      }
+
+      appId.value = id
+
+      function getAppInfo(id:string){
+        // 从后端接口获取app信息
+        return axios.get('http://localhost:8001/ai-meeting/api/app/get/vo', {
+          params: {
+            id: id
+          }
+        });
+      }
+
+      try {
+        // 使用新创建的 getAppInfo 方法获取应用信息
+        const res = await getAppInfo(id as string);
+        if (res.data.code === 0 && res.data.data) {
+          appInfo.value = res.data.data
+
+          // 先加载对话历史
+          await loadChatHistory()
+          // 如果有至少2条对话记录，展示对应的网站
+          if (messages.value.length >= 2) {
+            updatePreview()
+          }
+          // 检查是否需要自动发送初始提示词
+          // 只有在是自己的应用且没有对话历史时才自动发送
+          if (
+              appInfo.value.initPrompt &&
+              messages.value.length === 0 &&
+              historyLoaded.value
+          ) {
+            await sendInitialMessage(appInfo.value.initPrompt)
+          }
+        } else {
+          ElMessage.error('获取应用信息失败')
+          router.push('/')
+        }
+      } catch (error) {
+        console.error('获取应用信息失败：', error)
+        ElMessage.error('获取应用信息失败')
+        router.push('/')
+      }
+    }
+
+    // 发送初始消息
+    const sendInitialMessage = async (prompt: string) => {
+      // 添加用户消息
+      messages.value.push({
+        type: 'user',
+        content: prompt,
+      })
+
+      // 添加AI消息占位符
+      const aiMessageIndex = messages.value.length
+      messages.value.push({
+        type: 'ai',
+        content: '',
+        loading: true,
+      })
+
+      await nextTick()
+      scrollToBottom()
+
+      // 开始生成
+      isGenerating.value = true
+      await generateCode(prompt, aiMessageIndex)
+    }
+
+    function testMsg(){
+  // 添加AI消息
+  messages.value.push({
+    type: 'ai',
+    content: '这是一条测试消息！',
+    loading: false,
+  });
+  
+  // 确保DOM更新后滚动到底部
+  nextTick(() => {
+    scrollToBottom();
+  });
+}
+
+    // 发送消息
+    const sendMessage = async () => {
+      if (!userInput.value.trim() || isGenerating.value) {
+        return
+      }
+
+      let message = userInput.value.trim()
+      // 如果有选中的元素，将元素信息添加到提示词中
+      if (selectedElementInfo.value) {
+        let elementContext = `\n\n选中元素信息：`
+        if (selectedElementInfo.value.pagePath) {
+          elementContext += `\n- 页面路径: ${selectedElementInfo.value.pagePath}`
+        }
+        elementContext += `\n- 标签: ${selectedElementInfo.value.tagName.toLowerCase()}\n- 选择器: ${selectedElementInfo.value.selector}`
+        if (selectedElementInfo.value.textContent) {
+          elementContext += `\n- 当前内容: ${selectedElementInfo.value.textContent.substring(0, 100)}`
+        }
+        message += elementContext
+      }
+      userInput.value = ''
+      // 添加用户消息（包含元素信息）
+      messages.value.push({
+        type: 'user',
+        content: message,
+      })
+
+      // 发送消息后，清除选中元素并退出编辑模式
+      if (selectedElementInfo.value) {
+        clearSelectedElement()
+        if (isEditMode.value) {
+          toggleEditMode()
+        }
+      }
+
+      // 添加AI消息占位符
+      const aiMessageIndex = messages.value.length
+      messages.value.push({
+        type: 'ai',
+        content: '',
+        loading: true,
+      })
+
+      await nextTick()
+      scrollToBottom()
+
+      // 开始生成
+      isGenerating.value = true
+      await generateCode(message, aiMessageIndex)
+    }
+
+    // 初始化拖拽调整大小
+    const initResize = (e: MouseEvent) => {
+      e.preventDefault();
+      
+      const startY = e.clientY;
+      const textarea = inputWrapperRef.value?.querySelector('textarea');
+      if (!textarea) return;
+      
+      const startHeight = parseInt(document.defaultView?.getComputedStyle(textarea).height || '0', 10);
+      
+      const doDrag = (e: MouseEvent) => {
+        const newHeight = startHeight - (e.clientY - startY); // 修正方向
+        
+        if (textarea && newHeight > 50) { // 最小高度50px
+          textarea.style.height = newHeight + 'px';
+        }
+      };
+      
+      const stopDrag = () => {
+        document.documentElement.removeEventListener('mousemove', doDrag, false);
+        document.documentElement.removeEventListener('mouseup', stopDrag, false);
+      };
+      
+      document.documentElement.addEventListener('mousemove', doDrag, false);
+      document.documentElement.addEventListener('mouseup', stopDrag, false);
+    };
+
+    // 生成代码 - 使用 EventSource 处理流式响应
+    const generateCode = async (userMessage: string, aiMessageIndex: number) => {
+      let eventSource: EventSource | null = null
+      let streamCompleted = false
+
+      try {
+        const API_BASE_URL = 'http://localhost:8001/ai-meeting/api'
+        // 获取 axios 配置的 baseURL
+  
+        const baseURL = API_BASE_URL
+
+        // 构建URL参数
+        const params = new URLSearchParams({
+          appId: appId.value || '',
+          message: userMessage,
+        })
+
+        const url = `${baseURL}/app/chat/gen/code?${params}`
+
+        // 创建 EventSource 连接
+        eventSource = new EventSource(url, {
+          withCredentials: true,
+        })
+
+        let fullContent = ''
+
+        // 处理接收到的消息
+        eventSource.onmessage = function (event) {
+          if (streamCompleted) return
+
+          try {
+            // 解析JSON包装的数据
+            const parsed = JSON.parse(event.data)
+            const content = parsed.d
+            
+            // 拼接内容
+            if (content !== undefined && content !== null) {
+              fullContent += content
+              // 使用 Vue 的响应式更新确保视图更新
+              messages.value[aiMessageIndex].content = fullContent
+              messages.value[aiMessageIndex].loading = false
+              
+              // 强制触发更新，确保内容显示
+              nextTick(() => {
+                scrollToBottom()
+              })
+            }
+          } catch (error) {
+            console.error('解析消息失败:', error)
+            handleError(error, aiMessageIndex)
+          }
+        }
+
+        // 处理done事件
+        eventSource.addEventListener('done', function () {
+          if (streamCompleted) return
+
+          streamCompleted = true
+          isGenerating.value = false
+          eventSource?.close()
+
+          // 延迟更新预览，确保后端已完成处理
+          setTimeout(async () => {
+            await fetchAppInfo()
+            updatePreview()
+          }, 1000)
+        })
+
+        // 处理business-error事件（后端限流等错误）
+        eventSource.addEventListener('business-error', function (event: MessageEvent) {
+          if (streamCompleted) return
+
+          try {
+            const errorData = JSON.parse(event.data)
+            console.error('SSE业务错误事件:', errorData)
+
+            // 显示具体的错误信息
+            const errorMessage = errorData.message || '生成过程中出现错误'
+            messages.value[aiMessageIndex].content = `❌ ${errorMessage}`
+            messages.value[aiMessageIndex].loading = false
+            ElMessage.error(errorMessage)
+
+            streamCompleted = true
+            isGenerating.value = false
+            eventSource?.close()
+          } catch (parseError) {
+            console.error('解析错误事件失败:', parseError, '原始数据:', event.data)
+            handleError(new Error('服务器返回错误'), aiMessageIndex)
+          }
+        })
+
+        // 处理错误
+        eventSource.onerror = function () {
+          if (streamCompleted || !isGenerating.value) return
+          // 检查是否是正常的连接关闭
+          if (eventSource?.readyState === EventSource.CONNECTING) {
+            streamCompleted = true
+            isGenerating.value = false
+            eventSource?.close()
+
+            setTimeout(async () => {
+              await fetchAppInfo()
+              updatePreview()
+            }, 1000)
+          } else {
+            handleError(new Error('SSE连接错误'), aiMessageIndex)
+          }
+        }
+      } catch (error) {
+        console.error('创建 EventSource 失败：', error)
         handleError(error, aiMessageIndex)
       }
     }
 
-    // 处理done事件
-    eventSource.addEventListener('done', function () {
-      if (streamCompleted) return
-
-      streamCompleted = true
+    // 错误处理函数
+    const handleError = (error: unknown, aiMessageIndex: number) => {
+      console.error('生成代码失败：', error)
+      messages.value[aiMessageIndex].content = '抱歉，生成过程中出现了错误，请重试。'
+      messages.value[aiMessageIndex].loading = false
+      ElMessage.error('生成失败，请重试')
       isGenerating.value = false
-      eventSource?.close()
+    }
 
-      // 延迟更新预览，确保后端已完成处理
-      setTimeout(async () => {
-        await fetchAppInfo()
-        updatePreview()
-      }, 1000)
-    })
+    // 更新预览
+    const updatePreview = () => {
+      if (appId.value) {
+        // const codeGenType = appInfo.value?.codeGenType || CodeGenTypeEnum.HTML
+        const newPreviewUrl = getStaticPreviewUrl(appId.value)
+        previewUrl.value = newPreviewUrl
+        previewReady.value = true
+      }
+    }
 
-    // 处理business-error事件（后端限流等错误）
-    eventSource.addEventListener('business-error', function (event: MessageEvent) {
-      if (streamCompleted) return
+    // 滚动到底部
+    const scrollToBottom = () => {
+      if (messagesContainer.value) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+      }
+    }
+
+    // 下载代码
+    const downloadCode = async () => {
+      if (!appId.value) {
+        ElMessage.error('应用ID不存在')
+        return
+      }
+      downloading.value = true
+      try {
+        const API_BASE_URL = request.defaults.baseURL || ''
+        const url = `${API_BASE_URL}/api/app/download/${appId.value}`
+        const response = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+        })
+        if (!response.ok) {
+          throw new Error(`下载失败: ${response.status}`)
+        }
+        // 获取文件名
+        const contentDisposition = response.headers.get('Content-Disposition')
+        const fileName = contentDisposition?.match(/filename="(.+)"/)?.[1] || `app-${appId.value}.zip`
+        // 下载文件
+        const blob = await response.blob()
+        const downloadUrl = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = fileName
+        link.click()
+        // 清理
+        URL.revokeObjectURL(downloadUrl)
+        ElMessage.success('代码下载成功')
+      } catch (error) {
+        console.error('下载失败：', error)
+        ElMessage.error('下载失败，请重试')
+      } finally {
+        downloading.value = false
+      }
+    }
+
+    // 部署应用
+    const deployApp = async () => {
+      if (!appId.value) {
+        ElMessage.error('应用ID不存在')
+        return
+      }
+
+      deploying.value = true
+      try {
+        const res = await deployAppApi({
+          appId: appId.value as unknown as number,
+        })
+
+        if (res.data.code === 0 && res.data.data) {
+          deployUrl.value = res.data.data
+          deployModalVisible.value = true
+          ElMessage.success('部署成功')
+        } else {
+          ElMessage.error('部署失败：' + res.data.message)
+        }
+      } catch (error) {
+        console.error('部署失败：', error)
+        ElMessage.error('部署失败，请重试')
+      } finally {
+        deploying.value = false
+      }
+    }
+
+    // 在新窗口打开预览
+    const openInNewTab = () => {
+      if (previewUrl.value) {
+        window.open(previewUrl.value, '_blank')
+      }
+    }
+
+    // 打开部署的网站
+    const openDeployedSite = () => {
+      if (deployUrl.value) {
+        window.open(deployUrl.value, '_blank')
+      }
+    }
+
+    // iframe加载完成
+    const onIframeLoad = () => {
+      previewReady.value = true
+      const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
+      if (iframe) {
+        visualEditor.init(iframe)
+        visualEditor.onIframeLoad()
+      }
+    }
+
+    // 编辑应用
+    const editApp = () => {
+      if (appInfo.value?.id) {
+        router.push(`/app/edit/${appInfo.value.id}`)
+      }
+    }
+
+    // 删除应用
+    const deleteApp = async () => {
+      if (!appInfo.value?.id) return
 
       try {
-        const errorData = JSON.parse(event.data)
-        console.error('SSE业务错误事件:', errorData)
-
-        // 显示具体的错误信息
-        const errorMessage = errorData.message || '生成过程中出现错误'
-        messages.value[aiMessageIndex].content = `❌ ${errorMessage}`
-        messages.value[aiMessageIndex].loading = false
-        ElMessage.error(errorMessage)
-
-        streamCompleted = true
-        isGenerating.value = false
-        eventSource?.close()
-      } catch (parseError) {
-        console.error('解析错误事件失败:', parseError, '原始数据:', event.data)
-        handleError(new Error('服务器返回错误'), aiMessageIndex)
-      }
-    })
-
-    // 处理错误
-    eventSource.onerror = function () {
-      if (streamCompleted || !isGenerating.value) return
-      // 检查是否是正常的连接关闭
-      if (eventSource?.readyState === EventSource.CONNECTING) {
-        streamCompleted = true
-        isGenerating.value = false
-        eventSource?.close()
-
-        setTimeout(async () => {
-          await fetchAppInfo()
-          updatePreview()
-        }, 1000)
-      } else {
-        handleError(new Error('SSE连接错误'), aiMessageIndex)
+        const res = await deleteAppApi({ id: appInfo.value.id })
+        if (res.data.code === 0) {
+          ElMessage.success('删除成功')
+          appDetailVisible.value = false
+          router.push('/')
+        } else {
+          ElMessage.error('删除失败：' + res.data.message)
+        }
+      } catch (error) {
+        console.error('删除失败：', error)
+        ElMessage.error('删除失败')
       }
     }
-  } catch (error) {
-    console.error('创建 EventSource 失败：', error)
-    handleError(error, aiMessageIndex)
-  }
-}
 
-// 错误处理函数
-const handleError = (error: unknown, aiMessageIndex: number) => {
-  console.error('生成代码失败：', error)
-  messages.value[aiMessageIndex].content = '抱歉，生成过程中出现了错误，请重试。'
-  messages.value[aiMessageIndex].loading = false
-  ElMessage.error('生成失败，请重试')
-  isGenerating.value = false
-}
-
-// 更新预览
-const updatePreview = () => {
-  if (appId.value) {
-    // const codeGenType = appInfo.value?.codeGenType || CodeGenTypeEnum.HTML
-    // const newPreviewUrl = getStaticPreviewUrl(codeGenType, appId.value)
-    // previewUrl.value = newPreviewUrl
-    // previewReady.value = true
-  }
-}
-
-// 滚动到底部
-const scrollToBottom = () => {
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-  }
-}
-
-// 下载代码
-const downloadCode = async () => {
-  if (!appId.value) {
-    ElMessage.error('应用ID不存在')
-    return
-  }
-  downloading.value = true
-  try {
-    const API_BASE_URL = request.defaults.baseURL || ''
-    const url = `${API_BASE_URL}/app/download/${appId.value}`
-    const response = await fetch(url, {
-      method: 'GET',
-      credentials: 'include',
-    })
-    if (!response.ok) {
-      throw new Error(`下载失败: ${response.status}`)
+    // 可视化编辑相关函数
+    const toggleEditMode = () => {
+      // 检查 iframe 是否已经加载
+      const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
+      if (!iframe) {
+        ElMessage.warning('请等待页面加载完成')
+        return
+      }
+      // 确保 visualEditor 已初始化
+      if (!previewReady.value) {
+        ElMessage.warning('请等待页面加载完成')
+        return
+      }
+      const newEditMode = visualEditor.toggleEditMode()
+      isEditMode.value = newEditMode
     }
-    // 获取文件名
-    const contentDisposition = response.headers.get('Content-Disposition')
-    const fileName = contentDisposition?.match(/filename="(.+)"/)?.[1] || `app-${appId.value}.zip`
-    // 下载文件
-    const blob = await response.blob()
-    const downloadUrl = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.download = fileName
-    link.click()
-    // 清理
-    URL.revokeObjectURL(downloadUrl)
-    ElMessage.success('代码下载成功')
-  } catch (error) {
-    console.error('下载失败：', error)
-    ElMessage.error('下载失败，请重试')
-  } finally {
-    downloading.value = false
-  }
-}
 
-// 部署应用
-const deployApp = async () => {
-  if (!appId.value) {
-    ElMessage.error('应用ID不存在')
-    return
-  }
+    const clearSelectedElement = () => {
+      selectedElementInfo.value = null
+      visualEditor.clearSelection()
+    }
 
-  deploying.value = true
-  try {
-    const res = await deployAppApi({
-      appId: appId.value as unknown as number,
+    const getInputPlaceholder = () => {
+      if (selectedElementInfo.value) {
+        return `正在编辑 ${selectedElementInfo.value.tagName.toLowerCase()} 元素，描述您想要的修改...`
+      }
+      return '请描述你想生成的网站，越详细效果越好哦'
+    }
+
+    // 页面加载时获取应用信息
+    onMounted(() => {
+      fetchAppInfo()
+
+      // 监听 iframe 消息
+      window.addEventListener('message', (event) => {
+        visualEditor.handleIframeMessage(event)
+      })
     })
 
-    if (res.data.code === 0 && res.data.data) {
-      deployUrl.value = res.data.data
-      deployModalVisible.value = true
-      ElMessage.success('部署成功')
-    } else {
-      ElMessage.error('部署失败：' + res.data.message)
-    }
-  } catch (error) {
-    console.error('部署失败：', error)
-    ElMessage.error('部署失败，请重试')
-  } finally {
-    deploying.value = false
+    // 监听消息变化，自动滚动到底部
+    watch(
+      () => messages.value,
+      () => {
+        nextTick(() => {
+          scrollToBottom()
+        })
+      },
+      { deep: true }
+    )
+
+    // 清理资源
+    onUnmounted(() => {
+      // EventSource 会在组件卸载时自动清理
+    })
+    return {
+      // 应用信息
+      appInfo,
+      messages,
+      userInput,
+      isGenerating,
+      messagesContainer,
+      inputWrapperRef,
+      loadingHistory,
+      hasMoreHistory,
+      lastCreateTime,
+      historyLoaded,
+      previewUrl,
+      previewReady,
+      deploying,
+      deployModalVisible,
+      deployUrl,
+      downloading,
+      isEditMode,
+      selectedElementInfo,
+      appDetailVisible,
+      showAppDetail,
+      loadMoreHistory,
+      initResize,
+      // 获取应用信息
+      fetchAppInfo,
+      // 发送初始消息
+      sendInitialMessage,
+      // 发送消息
+      sendMessage,
+      testMsg,
+      // 生成代码 - 使用 EventSource 处理流式响应
+      generateCode,
+      // 错误处理函数
+      handleError,
+      // 更新预览
+      updatePreview,
+      // 滚动到底部
+      scrollToBottom,
+      // 下载代码
+      downloadCode,
+      // 部署应用
+      deployApp,
+      // 在新窗口打开预览
+      openInNewTab,
+      // 打开部署的网站
+      openDeployedSite,
+      // iframe加载完成
+      onIframeLoad,
+      // 编辑应用
+      editApp,
+      // 删除应用
+      deleteApp,
+      // 可视化编辑相关函数
+      toggleEditMode,
+      clearSelectedElement,
+      getInputPlaceholder,
+    };
   }
-}
-
-// 在新窗口打开预览
-const openInNewTab = () => {
-  if (previewUrl.value) {
-    window.open(previewUrl.value, '_blank')
-  }
-}
-
-// 打开部署的网站
-const openDeployedSite = () => {
-  if (deployUrl.value) {
-    window.open(deployUrl.value, '_blank')
-  }
-}
-
-// iframe加载完成
-const onIframeLoad = () => {
-  previewReady.value = true
-  const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
-  if (iframe) {
-    visualEditor.init(iframe)
-    visualEditor.onIframeLoad()
-  }
-}
-
-// 编辑应用
-const editApp = () => {
-  if (appInfo.value?.id) {
-    router.push(`/app/edit/${appInfo.value.id}`)
-  }
-}
-
-// 删除应用
-const deleteApp = async () => {
-  if (!appInfo.value?.id) return
-
-  try {
-    const res = await deleteAppApi({ id: appInfo.value.id })
-    if (res.data.code === 0) {
-      ElMessage.success('删除成功')
-      appDetailVisible.value = false
-      router.push('/')
-    } else {
-      ElMessage.error('删除失败：' + res.data.message)
-    }
-  } catch (error) {
-    console.error('删除失败：', error)
-    ElMessage.error('删除失败')
-  }
-}
-
-// 可视化编辑相关函数
-const toggleEditMode = () => {
-  // 检查 iframe 是否已经加载
-  const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
-  if (!iframe) {
-    ElMessage.warning('请等待页面加载完成')
-    return
-  }
-  // 确保 visualEditor 已初始化
-  if (!previewReady.value) {
-    ElMessage.warning('请等待页面加载完成')
-    return
-  }
-  const newEditMode = visualEditor.toggleEditMode()
-  isEditMode.value = newEditMode
-}
-
-const clearSelectedElement = () => {
-  selectedElementInfo.value = null
-  visualEditor.clearSelection()
-}
-
-const getInputPlaceholder = () => {
-  if (selectedElementInfo.value) {
-    return `正在编辑 ${selectedElementInfo.value.tagName.toLowerCase()} 元素，描述您想要的修改...`
-  }
-  return '请描述你想生成的网站，越详细效果越好哦'
-}
-
-// 页面加载时获取应用信息
-onMounted(() => {
-  fetchAppInfo()
-
-  // 监听 iframe 消息
-  window.addEventListener('message', (event) => {
-    visualEditor.handleIframeMessage(event)
-  })
-})
-
-// 清理资源
-onUnmounted(() => {
-  // EventSource 会在组件卸载时自动清理
-})
+});
 </script>
 
 <style scoped>
 #appChatPage {
-  height: 100vh;
+  height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   padding: 16px;
@@ -770,6 +935,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .header-left {
@@ -801,6 +968,7 @@ onUnmounted(() => {
   gap: 16px;
   padding: 8px;
   overflow: hidden;
+  min-height: 0; /* 允许子元素收缩 */
 }
 
 /* 左侧对话区域 */
@@ -812,13 +980,17 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  min-height: 0; /* 允许收缩 */
+  max-height: calc(100vh - 200px); /* 限制最大高度 */
 }
 
 .messages-container {
-  flex: 0.9;
+  flex: 1;
   padding: 16px;
   overflow-y: auto;
   scroll-behavior: smooth;
+  min-height: 0; /* 允许收缩 */
+  max-height: calc(100vh - 300px); /* 限制最大高度确保可见 */
 }
 
 .message-item {
@@ -884,16 +1056,49 @@ onUnmounted(() => {
 
 .input-wrapper {
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .input-wrapper :deep(.el-textarea__inner) {
   padding-right: 50px;
+  padding-top: 15px; /* 为顶部拖拽手柄留出空间 */
+  resize: none; /* 禁用默认的textarea调整大小 */
 }
 
 .input-actions {
   position: absolute;
   bottom: 8px;
   right: 8px;
+}
+
+/* 垂直拖拽手柄 */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 16px;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+}
+
+.resize-handle:hover {
+  background: #f0f0f0;
+  color: #666;
+}
+
+/* 可调整大小的文本框 */
+.resizable-textarea :deep(.el-textarea__inner) {
+  resize: none; /* 禁用默认的textarea调整大小 */
+  min-height: 120px; /* 设置最小高度 */
 }
 
 /* 右侧预览区域 */
@@ -905,6 +1110,7 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  min-height: 0; /* 允许收缩 */
 }
 
 .preview-header {
@@ -913,6 +1119,8 @@ onUnmounted(() => {
   align-items: center;
   padding: 16px;
   border-bottom: 1px solid #e8e8e8;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .preview-header h3 {
@@ -930,6 +1138,7 @@ onUnmounted(() => {
   flex: 1;
   position: relative;
   overflow: hidden;
+  min-height: 0; /* 允许收缩 */
 }
 
 .preview-placeholder {
@@ -969,7 +1178,7 @@ onUnmounted(() => {
   margin: 0 16px;
 }
 
-/* 响应式设计 */
+/* 中等屏幕 */
 @media (max-width: 1024px) {
   .main-content {
     flex-direction: column;
@@ -977,14 +1186,81 @@ onUnmounted(() => {
 
   .chat-section,
   .preview-section {
-    flex: none;
-    height: 50vh;
+    flex: 1;
+    min-height: 50vh;
+  }
+  
+  .chat-section {
+    max-height: unset; /* 在小屏幕上移除最大高度限制 */
+  }
+  
+  .messages-container {
+    max-height: unset; /* 在小屏幕上移除最大高度限制 */
+  }
+}
+
+/* 小屏幕 */
+@media (max-width: 480px) {
+  #appChatPage {
+    padding: 10px;
+  }
+  
+  .header-bar {
+    padding: 10px;
+  }
+  
+  .header-right .el-button {
+    min-width: calc(50% - 4px);
+  }
+  
+  .main-content {
+    padding: 5px;
+    gap: 5px;
+  }
+  
+  .messages-container {
+    padding: 10px;
+  }
+  
+  .input-container {
+    padding: 10px;
+  }
+  
+  .message-content {
+    max-width: 90%;
+  }
+  
+  .preview-header {
+    padding: 12px;
+  }
+  
+  .preview-header h3 {
+    font-size: 14px;
   }
 }
 
 @media (max-width: 768px) {
   .header-bar {
     padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .header-left {
+    width: 100%;
+  }
+
+  .header-right {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-right .el-button {
+    flex: 1;
+    min-width: calc(33% - 6px);
   }
 
   .app-name {
@@ -1063,6 +1339,32 @@ onUnmounted(() => {
   .edit-mode-active:hover {
     background-color: #73d13d !important;
     border-color: #73d13d !important;
+  }
+
+  /* 调整按钮在小屏幕上的显示 */
+  .input-actions .el-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .preview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .preview-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .preview-actions .el-button {
+    margin-right: 8px;
+  }
+  
+  /* 移动端隐藏拖拽手柄 */
+  .resize-handle {
+    display: none;
   }
 }
 </style>

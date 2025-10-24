@@ -24,7 +24,7 @@ export async function listAppChatHistory(
   options?: { [key: string]: any }
 ) {
   const { appId: param0, ...queryParams } = params
-  return request<API.BaseResponsePageChatHistory>(`/chatHistory/app/${param0}`, {
+  return request<API.BaseResponsePageChatHistory>(`/api/app/chatHistory/app/${param0}`, {
     method: 'GET',
     params: {
       // pageSize has a default value: 10

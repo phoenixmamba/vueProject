@@ -1,5 +1,5 @@
 <template>
-  <a-modal v-model:open="visible" title="应用详情" :footer="null" width="500px">
+  <el-dialog v-model="visible" title="应用详情" width="500px" :show-close="false">
     <div class="app-detail-content">
       <!-- 应用基础信息 -->
       <!-- <div class="app-basic-info">
@@ -13,54 +13,69 @@
         </div>
         <div class="info-item">
           <span class="info-label">生成类型：</span>
-          <a-tag v-if="app?.codeGenType" color="blue">
+          <el-tag v-if="app?.codeGenType" type="primary">
             {{ formatCodeGenType(app.codeGenType) }}
-          </a-tag>
+          </el-tag>
           <span v-else>未知类型</span>
         </div>
       </div> -->
 
       <!-- 操作栏（仅本人或管理员可见） -->
       <div class="app-actions">
-        <a-space>
-          <a-button type="primary" @click="handleEdit">
-            <template #icon>
-              <EditOutlined />
-            </template>
+        <el-space>
+          <el-button type="primary" @click="handleEdit">
+            <el-icon><EditPen /></el-icon>
             修改
-          </a-button>
-          <a-popconfirm
+          </el-button>
+          <el-popconfirm
             title="确定要删除这个应用吗？"
             @confirm="handleDelete"
-            ok-text="确定"
-            cancel-text="取消"
+            confirm-button-text="确定"
+            cancel-button-text="取消"
           >
-            <a-button danger>
-              <template #icon>
-                <DeleteOutlined />
-              </template>
-              删除
-            </a-button>
-          </a-popconfirm>
-        </a-space>
+            <template #reference>
+              <el-button type="danger">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </template>
+          </el-popconfirm>
+        </el-space>
       </div>
     </div>
-  </a-modal>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="visible = false">关闭</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { computed, withDefaults, defineProps, defineEmits } from 'vue'
-// 由于已在main.ts中全局注册图标组件，此处不再需要导入
-// import { EditOutlined, DeleteOutlined } from '@ant-design/icons-vue'
+import { computed, withDefaults, defineProps, defineEmits, ref, watch } from 'vue'
+import { EditPen, Delete } from '@element-plus/icons-vue'
 import UserInfo from './UserInfo.vue'
 import { formatTime } from '@/utils/time'
 
-
-
+const props = withDefaults(defineProps<{
+  open: boolean
+  app?: any
+}>(), {
+  open: false,
+  app: null
+})
 
 const emit = defineEmits(['update:open', 'edit', 'delete'])
 
-const visible = true
+const visible = ref(false)
+
+watch(() => props.open, (newVal) => {
+  visible.value = newVal
+})
+
+watch(visible, (newVal) => {
+  emit('update:open', newVal)
+})
 
 const handleEdit = () => {
   emit('edit')
