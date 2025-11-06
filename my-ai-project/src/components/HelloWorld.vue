@@ -1,3 +1,4 @@
+<!-- 这是Vue 2语法的模板代码 -->
 <template>
   <div class="hello">
     <h1>{{ msg }}</h1>
@@ -30,6 +31,7 @@
   </div>
 </template>
 
+<!-- 这是JavaScript语言的Vue 2选项式API语法 -->
 <script>
 export default {
   name: 'HelloWorld',
