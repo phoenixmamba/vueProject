@@ -151,7 +151,7 @@
         <div class="preview-header">
           <h3>生成后的网页展示</h3>
           <div class="preview-actions">
-            <!-- <el-button
+             <el-button
                 type="danger"
                 v-show="isEditMode"
                 @click="toggleEditMode"
@@ -166,7 +166,7 @@
             >
               <el-icon><EditPen /></el-icon>
               编辑模式
-            </el-button> -->
+            </el-button>
             <el-button v-if="previewUrl" link @click="openInNewTab">
               <el-icon><Promotion /></el-icon>
               新窗口打开
@@ -245,7 +245,7 @@ export default defineComponent({
     Position,
     // InfoFilled,
     Download,
-    // EditPen,
+     EditPen,
   },
   // props: {
   //   appId: {
@@ -302,6 +302,7 @@ export default defineComponent({
     const selectedElementInfo = ref<ElementInfo | null>(null)
     const visualEditor = new VisualEditor({
       onElementSelected: (elementInfo: ElementInfo) => {
+        console.log('选中元素信息：', elementInfo)
         selectedElementInfo.value = elementInfo
       },
     })
@@ -769,11 +770,15 @@ export default defineComponent({
 
     // iframe加载完成
     const onIframeLoad = () => {
+      console.log('AppChatPage: iframe 加载完成');
       previewReady.value = true
       const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
       if (iframe) {
+        console.log('AppChatPage: 找到 iframe 元素', iframe);
         visualEditor.init(iframe)
         visualEditor.onIframeLoad()
+      } else {
+        console.log('AppChatPage: 未找到 preview-iframe 元素');
       }
     }
 
@@ -805,18 +810,30 @@ export default defineComponent({
 
     // 可视化编辑相关函数
     const toggleEditMode = () => {
+      console.log('AppChatPage: 切换编辑模式');
       // 检查 iframe 是否已经加载
       const iframe = document.querySelector('.preview-iframe') as HTMLIFrameElement
       if (!iframe) {
         ElMessage.warning('请等待页面加载完成')
+        console.log('AppChatPage: iframe 未找到');
         return
       }
+      
+      // 检查 iframe 是否有有效的 src
+      if (!iframe.src) {
+        ElMessage.warning('页面尚未加载完成，请稍后再试')
+        console.log('AppChatPage: iframe 尚未设置 src');
+        return
+      }
+      
       // 确保 visualEditor 已初始化
       if (!previewReady.value) {
         ElMessage.warning('请等待页面加载完成')
+        console.log('AppChatPage: 预览未就绪');
         return
       }
       const newEditMode = visualEditor.toggleEditMode()
+      console.log('AppChatPage: 编辑模式已切换为', newEditMode);
       isEditMode.value = newEditMode
     }
 

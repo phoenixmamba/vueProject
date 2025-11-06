@@ -11,6 +11,14 @@ module.exports = defineConfig({
         secure: false,
         // 不 rewrite，这样会保留 /api 前缀转发到后端
         ws: false,
+      },
+      '/api/app/static': {
+        target: 'http://localhost:8001/ai-meeting',
+        changeOrigin: true,
+        secure: false,
+        pathRewrite: {
+          '^/api/app/static': '/api/app/static'
+        }
       }
     }
   },

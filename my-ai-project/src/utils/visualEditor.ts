@@ -42,7 +42,9 @@ export class VisualEditor {
    * 开启编辑模式
    */
   enableEditMode() {
+    console.log('VisualEditor: 开启编辑模式');
     if (!this.iframe) {
+      console.log('VisualEditor: 无法开启编辑模式，iframe 不存在');
       return
     }
     this.isEditMode = true
@@ -102,6 +104,10 @@ export class VisualEditor {
    * iframe 加载完成时调用
    */
   onIframeLoad() {
+    console.log('VisualEditor: onIframeLoad 被调用', {
+      isEditMode: this.isEditMode,
+      hasIframe: !!this.iframe
+    });
     if (this.isEditMode) {
       setTimeout(() => {
         this.injectEditScript()
@@ -118,10 +124,13 @@ export class VisualEditor {
    * 处理来自 iframe 的消息
    */
   handleIframeMessage(event: MessageEvent) {
+    console.log('VisualEditor: 接收到 iframe 消息', event.data);
     const { type, data } = event.data
     switch (type) {
       case 'ELEMENT_SELECTED':
+        console.log('VisualEditor: 接收到元素选择消息', data);
         if (this.options.onElementSelected && data.elementInfo) {
+          console.log('VisualEditor: 调用 onElementSelected 回调');
           this.options.onElementSelected(data.elementInfo)
         }
         break
@@ -137,8 +146,20 @@ export class VisualEditor {
    * 向 iframe 发送消息
    */
   private sendMessageToIframe(message: Record<string, any>) {
+    console.log('VisualEditor: 向 iframe 发送消息', message);
     if (this.iframe?.contentWindow) {
-      this.iframe.contentWindow.postMessage(message, '*')
+      // 使用更精确的目标源而不是 '*'
+      const iframeSrc = this.iframe.src;
+      const targetOrigin = iframeSrc ? new URL(iframeSrc).origin : '*';
+      this.iframe.contentWindow.postMessage(message, targetOrigin)
+      // 添加确认机制
+      setTimeout(() => {
+        if (this.iframe?.contentWindow) {
+          this.iframe.contentWindow.postMessage({ type: 'PING_IFRAME' }, targetOrigin);
+        }
+      }, 100);
+    } else {
+      console.log('VisualEditor: 无法向 iframe 发送消息，contentWindow 不存在');
     }
   }
 
@@ -146,13 +167,35 @@ export class VisualEditor {
    * 注入编辑脚本到 iframe
    */
   private injectEditScript() {
-    if (!this.iframe) return
+    console.log('VisualEditor: 开始注入编辑脚本');
+    if (!this.iframe) {
+      console.log('VisualEditor: iframe 不存在，无法注入脚本');
+      return
+    }
+
+    let retryCount = 0;
+    const maxRetries = 10;
 
     const waitForIframeLoad = () => {
       try {
-        if (this.iframe!.contentWindow && this.iframe!.contentDocument) {
+        console.log('VisualEditor: 检查 iframe 状态', {
+          hasContentWindow: !!this.iframe!.contentWindow,
+          hasContentDocument: !!this.iframe!.contentDocument,
+          readyState: this.iframe!.contentDocument?.readyState
+        });
+        
+        // 检查是否存在跨域问题
+        let contentDoc = null;
+        try {
+          contentDoc = this.iframe!.contentDocument;
+        } catch (e) {
+          console.log('VisualEditor: 访问 contentDocument 时出现跨域错误', e);
+        }
+        
+        if (this.iframe!.contentWindow && contentDoc) {
           // 检查是否已经注入过脚本
-          if (this.iframe!.contentDocument.getElementById('visual-edit-script')) {
+          if (contentDoc.getElementById('visual-edit-script')) {
+            console.log('VisualEditor: 编辑脚本已存在，发送切换编辑模式消息');
             this.sendMessageToIframe({
               type: 'TOGGLE_EDIT_MODE',
               editMode: true,
@@ -161,14 +204,77 @@ export class VisualEditor {
           }
 
           const script = this.generateEditScript()
-          const scriptElement = this.iframe!.contentDocument.createElement('script')
+          const scriptElement = contentDoc.createElement('script')
           scriptElement.id = 'visual-edit-script'
           scriptElement.textContent = script
-          this.iframe!.contentDocument.head.appendChild(scriptElement)
+          contentDoc.head.appendChild(scriptElement)
+          console.log('VisualEditor: 成功注入编辑脚本');
+        } else if (this.iframe!.contentWindow && !contentDoc) {
+          // 跨域情况下，尝试使用 postMessage 方式注入脚本
+          console.log('VisualEditor: 检测到跨域，尝试通过 postMessage 注入脚本');
+          const script = this.generateEditScript();
+          
+          // 尝试发送消息并增加重试机制
+          const sendCrossOriginMessage = () => {
+            console.log(`VisualEditor: 准备发送跨域注入消息 (尝试 ${retryCount + 1}/${maxRetries})`);
+            if (this.iframe?.contentWindow) {
+              // 使用更精确的目标源而不是 '*'
+              const iframeSrc = this.iframe.src;
+              const targetOrigin = iframeSrc ? new URL(iframeSrc).origin : '*';
+              this.iframe.contentWindow.postMessage({
+                type: 'INJECT_VISUAL_EDITOR_SCRIPT',
+                script: script
+              }, targetOrigin);
+              console.log('VisualEditor: 跨域注入消息已发送');
+            } else {
+              console.log('VisualEditor: 无法发送跨域注入消息，contentWindow 不存在');
+              return;
+            }
+            
+            // 发送确认消息以检查 iframe 是否接收
+            setTimeout(() => {
+              if (this.iframe?.contentWindow) {
+                const iframeSrc = this.iframe.src;
+                const targetOrigin = iframeSrc ? new URL(iframeSrc).origin : '*';
+                this.iframe.contentWindow.postMessage({
+                  type: 'PING_IFRAME'
+                }, targetOrigin);
+              }
+            }, 100);
+          };
+          
+          sendCrossOriginMessage();
+          
+          // 监听响应消息以确认 iframe 是否接收
+          const handleMessage = (event: MessageEvent) => {
+            if (event.data.type === 'PONG_IFRAME') {
+              console.log('VisualEditor: 成功收到 iframe 的响应，脚本应该已注入');
+              window.removeEventListener('message', handleMessage);
+            } else if (retryCount < maxRetries) {
+              retryCount++;
+              console.log(`VisualEditor: 未收到响应，${retryCount}/${maxRetries} 次重试`);
+              setTimeout(sendCrossOriginMessage, 500);
+            } else {
+              console.log('VisualEditor: 达到最大重试次数，停止尝试');
+              window.removeEventListener('message', handleMessage);
+              
+              // 如果所有方法都失败了，尝试给出提示
+              console.log('VisualEditor: 无法注入编辑脚本，可能是跨域限制导致');
+            }
+          };
+          
+          window.addEventListener('message', handleMessage);
+          
+          // 设置超时，避免监听器一直存在
+          setTimeout(() => {
+            window.removeEventListener('message', handleMessage);
+          }, 10000);
         } else {
+          console.log('VisualEditor: iframe 尚未加载完成，等待中...');
           setTimeout(waitForIframeLoad, 100)
         }
-      } catch {
+      } catch (error) {
+        console.error('VisualEditor: 注入编辑脚本失败', error);
         // 静默处理注入失败
       }
     }
@@ -180,8 +286,10 @@ export class VisualEditor {
    * 生成编辑脚本内容
    */
   private generateEditScript() {
+    console.log('VisualEditor: 生成编辑脚本');
     return `
       (function() {
+        console.log('VisualEditor: iframe 中的编辑脚本已启动');
         let isEditMode = true;
         let currentHoverElement = null;
         let currentSelectedElement = null;
@@ -327,6 +435,7 @@ export class VisualEditor {
            const clickHandler = (event) => {
              if (!isEditMode) return;
 
+             console.log('VisualEditor: iframe 中元素被点击', event.target);
              event.preventDefault();
              event.stopPropagation();
 
@@ -341,12 +450,14 @@ export class VisualEditor {
              currentSelectedElement = target;
 
              const elementInfo = getElementInfo(target);
+             console.log('VisualEditor: 获取到元素信息', elementInfo);
              try {
                window.parent.postMessage({
                  type: 'ELEMENT_SELECTED',
                  data: { elementInfo }
                }, '*');
-             } catch {
+             } catch (error) {
+               console.error('VisualEditor: 发送消息到父窗口失败', error);
                // 静默处理发送失败
              }
            };
@@ -363,31 +474,55 @@ export class VisualEditor {
 
         // 监听父窗口消息
         window.addEventListener('message', (event) => {
-           const { type, editMode } = event.data;
-           switch (type) {
-             case 'TOGGLE_EDIT_MODE':
-               isEditMode = editMode;
-               if (isEditMode) {
-                 injectStyles();
-                 setupEventListeners();
-                 showEditTip();
-               } else {
-                 clearHoverEffect();
-                 clearSelectedEffect();
-               }
-               break;
-             case 'CLEAR_SELECTION':
-               clearSelectedEffect();
-               break;
-             case 'CLEAR_ALL_EFFECTS':
-               isEditMode = false;
-               clearHoverEffect();
-               clearSelectedEffect();
-               const tip = document.getElementById('edit-tip');
-               if (tip) tip.remove();
-               break;
-           }
-         });
+          // 添加来源检查以提高安全性
+          const iframeSrc = document.referrer;
+          if (iframeSrc && event.origin !== new URL(iframeSrc).origin) {
+            console.warn('VisualEditor: iframe 中收到非预期来源的消息', event.origin);
+            return;
+          }
+          
+          console.log('VisualEditor: iframe 中接收到消息', event.data);
+          const { type, editMode, script } = event.data;
+          switch (type) {
+            case 'TOGGLE_EDIT_MODE':
+              isEditMode = editMode;
+              if (isEditMode) {
+                injectStyles();
+                setupEventListeners();
+                showEditTip();
+              } else {
+                clearHoverEffect();
+                clearSelectedEffect();
+              }
+              break;
+            case 'CLEAR_SELECTION':
+              clearSelectedEffect();
+              break;
+            case 'CLEAR_ALL_EFFECTS':
+              isEditMode = false;
+              clearHoverEffect();
+              clearSelectedEffect();
+              const tip = document.getElementById('edit-tip');
+              if (tip) tip.remove();
+              break;
+            case 'INJECT_VISUAL_EDITOR_SCRIPT':
+              // 处理跨域情况下的脚本注入
+              console.log('VisualEditor: 接收到跨域脚本注入请求');
+              if (script && !document.getElementById('visual-edit-script')) {
+                const scriptElement = document.createElement('script');
+                scriptElement.id = 'visual-edit-script';
+                scriptElement.textContent = script;
+                document.head.appendChild(scriptElement);
+                console.log('VisualEditor: 跨域脚本注入成功');
+              }
+              break;
+            case 'PING_IFRAME':
+              // 响应父窗口的 ping 消息
+              console.log('VisualEditor: iframe 收到 ping 消息，正在响应');
+              event.source?.postMessage({ type: 'PONG_IFRAME' }, event.origin);
+              break;
+          }
+        });
 
          function showEditTip() {
            if (document.getElementById('edit-tip')) return;
